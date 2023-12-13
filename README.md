@@ -16,6 +16,8 @@ The basic commands is:
 polegon -input your_tree_sequence -output updated_tree_sequence -m m -num_samples N -thinning k -write_sample 0
 ```
 
+The following details to these arguments can be displayed if you simply type `polegon`
+
 |flag|required?|details|  
 |-------------------|-----|---|  
 |**-input**|required|the prefix of the tree sequence file|
@@ -23,7 +25,7 @@ polegon -input your_tree_sequence -output updated_tree_sequence -m m -num_sample
 |**-m**|required|per base pair per generation mutation rate|
 |**-num_samples**|required|the number of posterior ARG samples|
 |**-thinning**|required|the number of iterations until one ARG posterior sample is recorded| 
-|**-write_sample**|optional|whether or not the posterior ARG samples are written, if 0, then only posterior average ARG will be written|
+|**-write_sample**|optional|whether or not the posterior ARG samples are written, if 0 (default), then only posterior average ARG will be written, otherwise all intermediate samples will be written|
 
 # Suggestions from the developers
 1. **TL;DR: Only SINGER, fast-SINGER and tsinfer work with POLEGON.**
