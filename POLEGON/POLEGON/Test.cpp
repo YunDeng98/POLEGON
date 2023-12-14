@@ -194,7 +194,7 @@ void test_pairwise_demo() {
     for (int i = 0; i < 100; i++) {
         cout << "MCMC iteration: " << i << endl;
         string node_file = "/Users/yun_deng/Desktop/arg_branch_length/arg_files/pair_new_nodes_" + to_string(i) + ".txt";
-        dag.no_prior_MCMC(200000);
+        dag.no_prior_MCMC(100000);
         dag.write_node_ages(node_file);
     }
     dag.posterior_average();
