@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+
+import argparse
+import sys
+
+def main():
+    parser = argparse.ArgumentParser(description='Run POLEGON to estimate branch length for ARG with fixed topology.')
+
+    parser.add_argument('-m', type=float, required=True, help='Per bp per generation mutation rate.')
+    parser.add_argument('-Ne', type=float, required=False, help='Effective population size.')
+    parser.add_argument('-burn_in', type=float, required=False, help="Burn-in iterations for MCMC.")
+    parser.add_argument('-num_samples', type=int, required=False, help='Number of MCMC samples.')
+    parser.add_argument('-thin', type=int, required=False, help='Thinning interval length for MCMC.')
+    parser.add_argument('-input', type=str, required=True, help='Input .trees file name')
+    parser.add_argument('-output', type=str, required=True, help='Output new .trees filename')
+
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
+    args = parser.parse_args()
+
+    # Implement your logic here
+    print("Received arguments:", args)
+
+if __name__ == "__main__":
+    main()

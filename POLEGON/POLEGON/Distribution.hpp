@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <map>
 #include <iostream>
+#include <algorithm>
 #include "random_utils.hpp"
 
 using namespace std;
