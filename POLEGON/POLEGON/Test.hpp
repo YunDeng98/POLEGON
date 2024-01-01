@@ -39,4 +39,6 @@ void test_bgs();
 
 void test_pairwise_demo();
 
+void test_migration();
+
 #endif /* Test_hpp */

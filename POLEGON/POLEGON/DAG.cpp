@@ -28,6 +28,7 @@ void DAG::burn_in() {
     num_posterior_samples = 0;
 }
 
+/*
 void DAG::MCMC(int n, Distribution *d) {
     for (int i = 0; i < n; i++) {
         int index = random_index();
@@ -38,11 +39,18 @@ void DAG::MCMC(int n, Distribution *d) {
         node_ages[i] += nodes[i]->time;
     }
 }
+ */
 
-void DAG::no_prior_MCMC(int n) {
+void DAG::no_prior_MCMC() {
+    /*
     int num_floating_nodes = (int) nodes.size() - num_leaf_nodes;
     for (int i = 0; i < n; i++) {
         int index = (i % num_floating_nodes) + num_leaf_nodes;
+        no_prior_propose(index);
+    }
+     */
+    vector<int> permutation = get_permutation();
+    for (int index : permutation) {
         no_prior_propose(index);
     }
     num_posterior_samples += 1;
@@ -329,4 +337,14 @@ float DAG::random_root_time(int i, float lb) {
         delta = -lambda*log(q);
     }
     return lb + delta;
+}
+
+vector<int> DAG::get_permutation() {
+    vector<int> permutation = {};
+    permutation.reserve(nodes.size() - num_leaf_nodes);
+    for (int i = 0; i < nodes.size() - num_leaf_nodes; i++) {
+        permutation.push_back(i + num_leaf_nodes);
+    }
+    shuffle(permutation.begin(), permutation.end(), random_engine);
+    return permutation;
 }

@@ -7,13 +7,14 @@
 
 #include "Test.hpp"
 
+/*
 void test_load_dag() {
     DAG dag = DAG(1e4);
     dag.load_dag("/Users/yun_deng/Desktop/POLEGON/arg_files/constant_nodes.txt", "/Users/yun_deng/Desktop/POLEGON/arg_files/constant_branches.txt", "/Users/yun_deng/Desktop/POLEGON/arg_files/constant_muts.txt");
     dag.compute_mutation_rates(2e-8);
 }
 
-/*
+
 void test_coalescent_prior() {
     Distribution *d = new Distribution(10);
     d->load_distribution("/Users/yun_deng/Desktop/POLEGON/arg_files/distribution_50.txt");
@@ -26,7 +27,8 @@ void test_coalescent_prior() {
         output_file << x << endl;
     }
 }
- */
+
+
 
 void test_sampling() {
     DAG dag = DAG(2e4);
@@ -43,7 +45,6 @@ void test_sampling() {
     dag.write_node_ages("/Users/yun_deng/Desktop/POLEGON/arg_files/constant_new_nodes.txt");
 }
 
-/*
 void test_tsinfer_topology() {
     DAG dag = DAG(2e4);
     dag.load_dag("/Users/yun_deng/Desktop/POLEGON/arg_files/tsinfer_nodes.txt", "/Users/yun_deng/Desktop/POLEGON/arg_files/tsinfer_branches.txt", "/Users/yun_deng/Desktop/POLEGON/arg_files/tsinfer_muts.txt");
@@ -56,7 +57,6 @@ void test_tsinfer_topology() {
         dag.write_node_ages(node_file);
     }
 }
- */
 
 void test_singer_topology() {
     DAG dag = DAG(2e4);
@@ -202,3 +202,27 @@ void test_pairwise_demo() {
     scaler.rescale(dag, 2.4e-4);
     dag.write_node_ages("/Users/yun_deng/Desktop/POLEGON/arg_files/pair_new_nodes.txt");
 }
+
+void test_migration() {
+    DAG dag = DAG(2e4);
+    dag.load_dag("/Users/yun_deng/Desktop/POLEGON/arg_files/migration_start_nodes_0.txt", "/Users/yun_deng/Desktop/POLEGON/arg_files/migration_start_branches_0.txt", "/Users/yun_deng/Desktop/POLEGON/arg_files/migration_start_muts_0.txt");
+    // dag.load_dag("/Users/yun_deng/Desktop/POLEGON/arg_files/migration_nodes_99.txt", "/Users/yun_deng/Desktop/POLEGON/arg_files/migration_branches_99.txt", "/Users/yun_deng/Desktop/POLEGON/arg_files/migration_muts_99.txt");
+    dag.compute_mutation_rates(1e-8);
+    for (int i = 0; i < 500; i++) {
+        dag.no_prior_MCMC(10000);
+    }
+    dag.burn_in();
+    for (int i = 0; i < 100; i++) {
+        cout << "MCMC iteration: " << i << endl;
+        // string node_file = "/Users/yun_deng/Desktop/POLEGON/arg_files/migration_new_nodes_" + to_string(i) + ".txt";
+        dag.no_prior_MCMC(100000);
+        // dag.write_node_ages(node_file);
+    }
+    dag.posterior_average();
+    // dag.write_node_ages("/Users/yun_deng/Desktop/POLEGON/arg_files/migration_raw_nodes_99.txt");
+    Scaler scaler = Scaler();
+    scaler.rescale(dag, 2e-4);
+    dag.write_node_ages("/Users/yun_deng/Desktop/POLEGON/arg_files/migration_new_nodes_0.txt");
+    // dag.write_node_ages("/Users/yun_deng/Desktop/POLEGON/arg_files/migration_new_nodes_99.txt");
+}
+*/

@@ -43,9 +43,9 @@ public:
     
     void burn_in();
     
-    void MCMC(int n, Distribution *d);
+    // void MCMC(int n, Distribution *d);
     
-    void no_prior_MCMC(int n);
+    void no_prior_MCMC();
     
     void posterior_average();
     
@@ -68,6 +68,8 @@ public:
     void propose(int i, Distribution *d);
     
     int random_index();
+    
+    vector<int> get_permutation();
     
     void load_nodes(string node_file);
     
