@@ -101,6 +101,7 @@ void Scaler::compute_old_grid() {
         expected_arg_length[i-1] = unit_arg_length;
         old_grid.push_back(sorted_nodes[new_index]->time - residue/rate);
     }
+    old_grid.back() = nextafter(sorted_nodes.back()->time, INT_MAX);
     assert(old_grid.size() == num_windows + 1);
 }
 
@@ -111,6 +112,7 @@ void Scaler::compute_new_grid(double theta) {
     }
     double base_time = 0;
     double old_window_width = 0, scaling_factor = 0;
+    new_grid.reserve(old_grid.size());
     for (int i = 1; i < old_grid.size(); i++) {
         old_window_width = old_grid[i] - old_grid[i-1];
         scaling_factor = observed_arg_length[i-1]/expected_arg_length[i-1];
