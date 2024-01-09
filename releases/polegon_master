@@ -110,7 +110,7 @@ def polegon_workflow(m, burn_in, num_samples, thin, input_prefix, output_prefix)
     Ne = old_ts.diversity(mode='site')/2/m
     script_dir = os.path.dirname(os.path.realpath(__file__))
     polegon_binary = os.path.join(script_dir, 'polegon')
-    polegon_command = [polegon_binary, "-m", f"{m}", "-Ne", f"{Ne}", "-burn_in", f"{burn_in}", "-num_samples", f"{num_samples}", "-thin", f"{thin}", "-input", f"{input_prefix}", "-output", f"{input_prefix}"]
+    polegon_command = [polegon_binary, "-m", f"{m}", "-Ne", f"{Ne}", "-burn_in", f"{burn_in}", "-num_samples", f"{num_samples}", "-thin", f"{thin}", "-input", f"{input_prefix}", "-output", f"{output_prefix}"]
     print("Run polegon command: " + ' '.join(polegon_command))
     result = subprocess.run(polegon_command, capture_output=True, text=True)
     if result.returncode == 0:
