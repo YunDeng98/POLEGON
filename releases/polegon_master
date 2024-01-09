@@ -106,6 +106,7 @@ def polegon_workflow(m, burn_in, num_samples, thin, input_prefix, output_prefix)
     old_ts = tskit.load(input_prefix + ".trees")
     write_arg(old_ts, f"{input_prefix}_nodes.txt", f"{input_prefix}_branches.txt")
     write_muts(old_ts, f"{input_prefix}_muts.txt")
+    print("polegon files written.")
     Ne = old_ts.diversity(mode='site')/2/m
     script_dir = os.path.dirname(os.path.realpath(__file__))
     polegon_binary = os.path.join(script_dir, 'polegon')
@@ -118,9 +119,11 @@ def polegon_workflow(m, burn_in, num_samples, thin, input_prefix, output_prefix)
         new_ts.dump(output_prefix + ".trees")
     else:
         print("polegon failed")
+    """
     for f in [f"{input_prefix}_nodes.txt", f"{input_prefix}_branches.txt", f"{input_prefix}_muts.txt", f"{input_prefix}_new_nodes.txt"]:
         if os.path.exists(f):
             os.remove(f)
+    """
     return
 
 def main():
