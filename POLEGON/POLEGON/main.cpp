@@ -13,6 +13,7 @@ int main(int argc, const char * argv[]) {
     int num_samples = -1;
     int burn_in = -1;
     int spacing = -1;
+    int scaling_rep = 1;
     string input_prefix = "", output_prefix = "";
     int seed = 42;
     float Ne = 0;
@@ -63,6 +64,18 @@ int main(int argc, const char * argv[]) {
                 num_samples = stoi(argv[++i]);
             } catch (const invalid_argument&) {
                 cerr << "Error: -num_samples flag expects a number. " << endl;
+                exit(1);
+            }
+        }
+        else if (arg == "-scaling_rep") {
+            if (i + 1 >= argc || argv[i+1][0] == '-') {
+                cerr << "Error: -scaling_rep flag cannot be empty. " << endl;
+                exit(1);
+            }
+            try {
+                num_samples = stoi(argv[++i]);
+            } catch (const invalid_argument&) {
+                cerr << "Error: -scaling_rep flag expects a number. " << endl;
                 exit(1);
             }
         }
@@ -127,8 +140,10 @@ int main(int argc, const char * argv[]) {
         }
     }
     dag.posterior_average();
-    Scaler scaler = Scaler();
-    scaler.rescale(dag, Ne*m);
+    for (int i = 0; i < scaling_rep; i++) {
+        Scaler scaler = Scaler();
+        scaler.rescale(dag, Ne*m);
+    }
     string new_node_file = input_prefix + "_new_nodes.txt";
     dag.write_node_ages(new_node_file);
     return 0;

@@ -146,6 +146,11 @@ float DAG::no_prior_acceptance_ratio(int i, float t, float lb, float ub) {
     if (ub == INT_MAX) {
         q *= exp((t - t0)/lambda);
     }
+    /*
+    if (ub == INT_MAX) {
+        cout << lb << " " << t0 << " " << t << " " << q << endl;
+    }
+     */
     return q;
 }
 
