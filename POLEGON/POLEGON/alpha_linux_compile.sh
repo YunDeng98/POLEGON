@@ -24,6 +24,7 @@ g++ -std=c++17 -g -static *.cpp -o $VERSION_DIR/polegon_debug
 
 # Copy additional files
 cp polegon_master $VERSION_DIR/polegon_master
+cp ../../LICENSE $VERSION_DIR/LICENSE
 
 # Change directory to releases
 cd $RELEASE_DIR
