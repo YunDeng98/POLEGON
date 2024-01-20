@@ -102,14 +102,14 @@ def read_mts(node_file, branch_file, mutation_file):
     new_ts = tables.tree_sequence()
     return new_ts
 
-def polegon_workflow(m, burn_in, num_samples, thin, input_prefix, output_prefix):
+def polegon_workflow(m, burn_in, num_samples, thin, scaling_rep, input_prefix, output_prefix):
     old_ts = tskit.load(input_prefix + ".trees")
     write_arg(old_ts, f"{input_prefix}_nodes.txt", f"{input_prefix}_branches.txt")
     write_muts(old_ts, f"{input_prefix}_muts.txt")
     Ne = old_ts.diversity(mode='site')/2/m
     script_dir = os.path.dirname(os.path.realpath(__file__))
     polegon_binary = os.path.join(script_dir, 'polegon')
-    polegon_command = [polegon_binary, "-m", f"{m}", "-Ne", f"{Ne}", "-burn_in", f"{burn_in}", "-num_samples", f"{num_samples}", "-thin", f"{thin}", "-input", f"{input_prefix}", "-output", f"{output_prefix}"]
+    polegon_command = [polegon_binary, "-m", f"{m}", "-Ne", f"{Ne}", "-burn_in", f"{burn_in}", "-num_samples", f"{num_samples}", "-thin", f"{thin}", "-scaling_rep", f"{scaling_rep}", "-input", f"{input_prefix}", "-output", f"{output_prefix}"]
     print("Run polegon command: " + ' '.join(polegon_command))
     result = subprocess.run(polegon_command, capture_output=True, text=True)
     if result.returncode == 0:
@@ -129,10 +129,11 @@ def main():
     parser.add_argument('-m', type=float, required=True, help='Per bp per generation mutation rate.')
     parser.add_argument('-burn_in', type=float, required=False, default=10, help="Burn-in iterations for MCMC.")
     parser.add_argument('-num_samples', type=int, required=False, default=100, help='Number of MCMC samples.')
+    parser.add_argument('-scaling_rep', type=int, required=False, default=5, help='Number of re-scaling steps. ')
     parser.add_argument('-thin', type=int, required=False, default=10, help='Thinning interval length for MCMC.')
     parser.add_argument('-input', type=str, required=True, help='Input .trees file prefix')
     parser.add_argument('-output', type=str, required=True, help='Output new .trees prefix')
-
+   
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
@@ -140,7 +141,7 @@ def main():
     args = parser.parse_args()
 
     # Implement your logic here
-    polegon_workflow(args.m, args.burn_in, args.num_samples, args.thin, args.input, args.output)
+    polegon_workflow(args.m, args.burn_in, args.num_samples, args.thin, args.scaling_rep, args.input, args.output)
 
 if __name__ == "__main__":
     main()
