@@ -13,7 +13,7 @@ Fixated on the topology, POLEGON can generate you the posterior samples of the A
 The basic commands is:
 
 ```
-polegon -input your_tree_sequence -output updated_tree_sequence -m m -num_samples N -thinning k -write_sample 0
+polegon_master -m mutation_rate -input original_tree_sequence -output updated_tree_sequence -num_samples N -thin K -scaling_rep L
 ```
 
 The following details to these arguments can be displayed if you simply type `polegon`
@@ -22,7 +22,8 @@ The following details to these arguments can be displayed if you simply type `po
 |-------------------|-----|---|  
 |**-input**|required|the prefix of the tree sequence file|
 |**-output**|required|the prefix of the re-sampled tree sequence file|
-|**-m**|required|per base pair per generation mutation rate|
+|**-m**|conditionally required|per base pair per generation mutation rate|
+|**-map**|conditionally required|mutation rate map for the region|
 |**-num_samples**|required|the number of posterior ARG samples|
 |**-thinning**|required|the number of iterations until one ARG posterior sample is recorded| 
 |**-write_sample**|optional|whether or not the posterior ARG samples are written, if 0 (default), then only posterior average ARG will be written, otherwise all intermediate samples will be written|
