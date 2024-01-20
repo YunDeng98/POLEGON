@@ -73,7 +73,7 @@ int main(int argc, const char * argv[]) {
                 exit(1);
             }
             try {
-                num_samples = stoi(argv[++i]);
+                scaling_rep = stoi(argv[++i]);
             } catch (const invalid_argument&) {
                 cerr << "Error: -scaling_rep flag expects a number. " << endl;
                 exit(1);

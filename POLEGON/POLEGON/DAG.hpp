@@ -17,6 +17,7 @@
 #include "Node.hpp"
 #include "Branch.hpp"
 #include "random_utils.hpp"
+#include "Mutation_map.hpp"
 #include "Distribution.hpp"
 
 class DAG {
