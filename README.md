@@ -13,7 +13,7 @@ Fixated on the topology, POLEGON can generate you the posterior samples of the A
 The basic commands is:
 
 ```
-polegon -input your_tree_sequence -output updated_tree_sequence -m m -num_samples N -thinning k -write_sample 0
+polegon_master -m mutation_rate -input original_tree_sequence -output updated_tree_sequence -num_samples N -thin K -scaling_rep L
 ```
 
 The following details to these arguments can be displayed if you simply type `polegon`
@@ -22,10 +22,21 @@ The following details to these arguments can be displayed if you simply type `po
 |-------------------|-----|---|  
 |**-input**|required|the prefix of the tree sequence file|
 |**-output**|required|the prefix of the re-sampled tree sequence file|
-|**-m**|required|per base pair per generation mutation rate|
-|**-num_samples**|required|the number of posterior ARG samples|
-|**-thinning**|required|the number of iterations until one ARG posterior sample is recorded| 
-|**-write_sample**|optional|whether or not the posterior ARG samples are written, if 0 (default), then only posterior average ARG will be written, otherwise all intermediate samples will be written|
+|**-m**|conditionally required|per base pair per generation mutation rate|
+|**-map**|conditionally required|mutation rate map for the region|
+|**-num_samples**|optional|the number of posterior ARG samples. Default: 100|
+|**-thinning**|optional|the number of thinning iterations in MCMC. Default: 10|
+|**-scaling_rep**|optional|the number of rescaling steps after MCMC. Default: 5|
+
+If you want to use a mutation map, rather than a constant mutation rate along the genome, the mutation map file should be formatted as follows:
+
+```
+0 1.2e-8
+100000 2e-8
+200000 1e-8
+```
+
+this means that the mutation rate between 0-100kb is 1.2e-8, and between 100-200kb is 2e-8. The coordinates must start from 0 and the last coordinate must be larger than (or equal to) the sequence length in the tree sequence file, so that mutation map is fully defined. 
 
 # Suggestions from the developers
 1. **TL;DR: Only SINGER, fast-SINGER and tsinfer work with POLEGON.**
