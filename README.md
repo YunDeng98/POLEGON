@@ -24,9 +24,9 @@ The following details to these arguments can be displayed if you simply type `po
 |**-output**|required|the prefix of the re-sampled tree sequence file|
 |**-m**|conditionally required|per base pair per generation mutation rate|
 |**-map**|conditionally required|mutation rate map for the region|
-|**-num_samples**|required|the number of posterior ARG samples|
-|**-thinning**|required|the number of iterations until one ARG posterior sample is recorded| 
-|**-write_sample**|optional|whether or not the posterior ARG samples are written, if 0 (default), then only posterior average ARG will be written, otherwise all intermediate samples will be written|
+|**-num_samples**|optional|the number of posterior ARG samples. Default: 100|
+|**-thinning**|optional|the number of thinning iterations in MCMC. Default: 10|
+|**-scaling_rep**|optional|the number of rescaling steps after MCMC. Default: 5|
 
 # Suggestions from the developers
 1. **TL;DR: Only SINGER, fast-SINGER and tsinfer work with POLEGON.**
