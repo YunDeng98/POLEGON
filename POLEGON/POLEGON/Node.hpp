@@ -21,11 +21,11 @@ class Node {
 
 public:
     
-    float time = 0;
+    double time = 0;
     int index = 0;
     bool is_sample = false;
     
-    Node(float t, int i);
+    Node(double t, int i);
     
 };
 

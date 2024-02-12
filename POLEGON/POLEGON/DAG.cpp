@@ -7,7 +7,7 @@
 
 #include "DAG.hpp"
 
-DAG::DAG(float n) {
+DAG::DAG(double n) {
     Ne = n;
 }
 
@@ -17,7 +17,7 @@ void DAG::load_dag(string node_file, string branch_file, string mut_file) {
     load_mutations(mut_file);
 }
 
-void DAG::compute_mutation_rates(float theta) {
+void DAG::compute_mutation_rates(double theta) {
     for (Branch *b : branches) {
         b->mutation_rate = b->span*theta*Ne;
     }
@@ -43,9 +43,9 @@ void DAG::MCMC(int n, Distribution *d) {
 
 void DAG::no_prior_MCMC() {
     /*
-    int num_floating_nodes = (int) nodes.size() - num_leaf_nodes;
+    int num_doubleing_nodes = (int) nodes.size() - num_leaf_nodes;
     for (int i = 0; i < n; i++) {
-        int index = (i % num_floating_nodes) + num_leaf_nodes;
+        int index = (i % num_doubleing_nodes) + num_leaf_nodes;
         no_prior_propose(index);
     }
      */
@@ -69,42 +69,42 @@ void DAG::write_node_ages(string filename) {
     ofstream file;
     file.open(filename);
     for (Node *n : nodes) {
-        file << std::setprecision(std::numeric_limits<float>::max_digits10) << n->time*Ne << "\n";
+        file << std::setprecision(std::numeric_limits<double>::max_digits10) << n->time*Ne << "\n";
     }
     file.close();
 }
 
 // private methods:
 
-float DAG::lower_bound(int i) {
+double DAG::lower_bound(int i) {
     auto &x = children[i];
     if (x.size() == 0) {
         return nodes[i]->time;
     }
-    float lb = 0;
+    double lb = 0;
     for (auto &b : x) {
         lb = max(b->lower_node->time, lb);
     }
     return lb;
 }
 
-float DAG::upper_bound(int i) {
+double DAG::upper_bound(int i) {
     auto &x = parents[i];
     if (x.size() == 0) {
         return INT_MAX;
     }
-    float ub = INT_MAX;
+    double ub = INT_MAX;
     for (auto &b : x) {
         ub = min(b->upper_node->time, ub);
     }
     return ub;
 }
 
-float DAG::log_acceptance_weight(int i, float t) {
-    float w = 0;
+double DAG::log_acceptance_weight(int i, double t) {
+    double w = 0;
     auto &xp = parents[i];
     auto &xc = children[i];
-    float length = 0, count = 0, rate = 0;
+    double length = 0, count = 0, rate = 0;
     for (auto &b : xp) { // note that the mutation rate here is a product of Ne, theta, and span
         length = b->upper_node->time - t;
         count = b->mutation_count;
@@ -132,17 +132,17 @@ float DAG::log_acceptance_weight(int i, float t) {
     return w;
 }
 
-float DAG::acceptance_ratio(int i, float t) {
-    float t0 = nodes[i]->time;
-    float w0 = log_acceptance_weight(i, t0);
-    float w1 = log_acceptance_weight(i, t);
-    float q = exp(w1 - w0);
+double DAG::acceptance_ratio(int i, double t) {
+    double t0 = nodes[i]->time;
+    double w0 = log_acceptance_weight(i, t0);
+    double w1 = log_acceptance_weight(i, t);
+    double q = exp(w1 - w0);
     return q;
 }
 
-float DAG::no_prior_acceptance_ratio(int i, float t, float lb, float ub) {
-    float q = acceptance_ratio(i, t);
-    float t0 = nodes[i]->time;
+double DAG::no_prior_acceptance_ratio(int i, double t, double lb, double ub) {
+    double q = acceptance_ratio(i, t);
+    double t0 = nodes[i]->time;
     if (ub == INT_MAX) {
         q *= exp((t - t0)/lambda);
     }
@@ -155,11 +155,11 @@ float DAG::no_prior_acceptance_ratio(int i, float t, float lb, float ub) {
 }
 
 void DAG::propose(int i, Distribution *d) {
-    float lb = lower_bound(i);
-    float ub = upper_bound(i);
-    float t = d->propose(lb, ub);
-    float ar = acceptance_ratio(i, t);
-    float q = uniform_random();
+    double lb = lower_bound(i);
+    double ub = upper_bound(i);
+    double t = d->propose(lb, ub);
+    double ar = acceptance_ratio(i, t);
+    double q = uniform_random();
     if (q < ar) {
         nodes[i]->time = t;
         updates += 1;
@@ -168,17 +168,17 @@ void DAG::propose(int i, Distribution *d) {
 }
 
 void DAG::no_prior_propose(int i) {
-    float lb = lower_bound(i);
-    float ub = upper_bound(i);
-    float t0 = nodes[i]->time;
-    float t = 0;
+    double lb = lower_bound(i);
+    double ub = upper_bound(i);
+    double t0 = nodes[i]->time;
+    double t = 0;
     if (ub != INT_MAX) {
         t = random_non_root_time(t0, lb, ub);
     } else {
         t = random_root_time(i, lb);
     }
-    float ar = no_prior_acceptance_ratio(i, t, lb, ub);
-    float q = uniform_random();
+    double ar = no_prior_acceptance_ratio(i, t, lb, ub);
+    double q = uniform_random();
     if (q < ar) {
         nodes[i]->time = t;
         updates += 1;
@@ -201,7 +201,7 @@ void DAG::load_nodes(string node_file) {
         exit(1);
     }
     int count = 0;
-    float x;
+    double x;
     while (fin >> x) {
         Node *n = new Node(x/Ne, count);
         if (x == 0) {
@@ -221,14 +221,14 @@ void DAG::load_branches(string branch_file) {
         cerr << "input file not found" << endl;
         exit(1);
     }
-    float x;
-    float y;
-    float p;
-    float c;
+    double x;
+    double y;
+    double p;
+    double c;
     Node *un;
     Node *ln;
     Branch *b;
-    map<pair<Node *, Node *>, float> branch_span = {};
+    map<pair<Node *, Node *>, double> branch_span = {};
     while (fin >> x >> y >> p >> c) {
         if (p < 0) {
             un = root;
@@ -263,10 +263,10 @@ void DAG::load_mutations(string mut_file) {
         cerr << "input file not found" << endl;
         exit(1);
     }
-    float pos;
-    float n1;
-    float n2;
-    float s;
+    double pos;
+    double n1;
+    double n2;
+    double s;
     Node *ln;
     Node *un;
     Branch *b;
@@ -325,18 +325,18 @@ Branch *DAG::search_branch(Node *n1, Node *n2) {
     return nullptr;
 }
 
-float DAG::random_non_root_time(float t0, float lb, float ub) {
+double DAG::random_non_root_time(double t0, double lb, double ub) {
     assert(ub != INT_MAX);
-    float t = lb + uniform_random()*(ub - lb);
+    double t = lb + uniform_random()*(ub - lb);
     if (t <= lb or t >= ub) {
         t = 0.5*(lb + ub);
     }
     return t;
 }
 
-float DAG::random_root_time(int i, float lb) {
-    float q = uniform_random();
-    float delta = -lambda*log(q);
+double DAG::random_root_time(int i, double lb) {
+    double q = uniform_random();
+    double delta = -lambda*log(q);
     while (delta <= 0.001 or delta > 10) {
         q = uniform_random();
         delta = -lambda*log(q);

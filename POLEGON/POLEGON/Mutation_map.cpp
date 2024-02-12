@@ -15,10 +15,10 @@ void Mutation_map::load_map(string mut_map_file) {
         cerr << "input mutation map file not found" << endl;
         exit(1);
     }
-    float curr_pos = 0;
-    float prev_pos = 0;
-    float prev_rate = 0;
-    float curr_rate = 0;
+    double curr_pos = 0;
+    double prev_pos = 0;
+    double prev_rate = 0;
+    double curr_rate = 0;
     while (fin >> curr_pos >> curr_rate) {
         coordinates.push_back(curr_pos);
         mutation_distance.push_back((curr_pos - prev_pos)*prev_rate);
@@ -37,7 +37,7 @@ int Mutation_map::find_index(double x) {
 
 double Mutation_map::mut_distance(double x) {
     int index = find_index(x);
-    float p = (x - coordinates[index])/(coordinates[index+1] - coordinates[index]);
+    double p = (x - coordinates[index])/(coordinates[index+1] - coordinates[index]);
     double d = mutation_distance[index]*(1 - p) + mutation_distance[index + 1]*p;
     return d;
 }

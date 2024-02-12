@@ -9,14 +9,14 @@
 #include "Test.hpp"
 
 int main(int argc, const char * argv[]) {
-    float m = -1;
+    double m = -1;
     int num_samples = -1;
     int burn_in = -1;
     int spacing = -1;
     int scaling_rep = 1;
     string input_prefix = "", output_prefix = "";
     int seed = 42;
-    float Ne = 0;
+    double Ne = 0;
     for (int i = 1; i < argc; ++i) {
         string arg = argv[i];
         if (arg == "-m") {

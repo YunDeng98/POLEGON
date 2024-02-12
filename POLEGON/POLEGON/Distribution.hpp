@@ -21,21 +21,21 @@ class Distribution {
 public:
     
     int num_samples = 0;
-    vector<float> times = {};
-    vector<float> probs = {};
-    vector<float> rates = {};
+    vector<double> times = {};
+    vector<double> probs = {};
+    vector<double> rates = {};
     
     Distribution(int n);
     
     void load_distribution(string filename);
     
-    float propose(float lb, float ub);
+    double propose(double lb, double ub);
     
 // private:
     
-    float survival(float x);
+    double survival(double x);
     
-    float inverse_survival(float q);
+    double inverse_survival(double q);
     
 };
 

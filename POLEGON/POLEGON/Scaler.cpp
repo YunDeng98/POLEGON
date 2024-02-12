@@ -116,6 +116,7 @@ void Scaler::compute_new_grid(double theta) {
     for (int i = 1; i < old_grid.size(); i++) {
         old_window_width = old_grid[i] - old_grid[i-1];
         scaling_factor = observed_arg_length[i-1]/expected_arg_length[i-1];
+        assert(!isnan(scaling_factor));
         scaling_factors.push_back(scaling_factor);
         base_time += old_window_width*scaling_factor;
         new_grid.push_back(base_time);
@@ -130,7 +131,7 @@ void Scaler::map_mutations(DAG &dag) {
 }
 
 void Scaler::add_mutation(double w, double lb, double ub) {
-    double x, y, l;
+    double x, y, l, p;
     int index;
     auto it = upper_bound(old_grid.begin(), old_grid.end(), lb);
     it--;
@@ -139,7 +140,13 @@ void Scaler::add_mutation(double w, double lb, double ub) {
         x = old_grid[index];
         y = old_grid[index + 1];
         l = min(ub, y) - max(lb, x);
-        observed_arg_length[index] += w*l/(ub - lb);
+        if (ub - lb == 0) {
+            p = 1.0;
+        } else {
+            p = l/(ub - lb);
+            p = min(p, 1.0);
+        }
+        observed_arg_length[index] += w*p;
         index++;
     }
 }

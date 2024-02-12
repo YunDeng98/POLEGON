@@ -17,9 +17,9 @@ public:
     
     Node *upper_node = nullptr;
     Node *lower_node = nullptr;
-    float span = 0;
-    float mutation_count = 0;
-    float mutation_rate = 0;
+    double span = 0;
+    double mutation_count = 0;
+    double mutation_rate = 0;
     
     Branch();
     

@@ -25,22 +25,22 @@ class DAG {
 public:
     
     int num_leaf_nodes = 0;
-    float Ne = 1;
-    float lambda = 10;
+    double Ne = 1;
+    double lambda = 10;
     int num_posterior_samples = 0;
-    Node *root = new Node(numeric_limits<float>::infinity(), INT_MAX);
+    Node *root = new Node(numeric_limits<double>::infinity(), INT_MAX);
     vector<Node *> nodes = {};
-    vector<float> node_ages = {};
+    vector<double> node_ages = {};
     vector<Branch *> branches = {};
     vector<set<Branch *>> parents = {};
     vector<set<Branch *>> children = {};
     int updates = 0;
     
-    DAG(float n);
+    DAG(double n);
     
     void load_dag(string node_file, string branch_file, string mut_file);
     
-    void compute_mutation_rates(float theta);
+    void compute_mutation_rates(double theta);
     
     void burn_in();
     
@@ -54,15 +54,15 @@ public:
     
 // private:
     
-    float lower_bound(int i);
+    double lower_bound(int i);
     
-    float upper_bound(int i);
+    double upper_bound(int i);
     
-    float log_acceptance_weight(int i, float t);
+    double log_acceptance_weight(int i, double t);
     
-    float acceptance_ratio(int i, float t);
+    double acceptance_ratio(int i, double t);
     
-    float no_prior_acceptance_ratio(int i, float t, float lb, float ub);
+    double no_prior_acceptance_ratio(int i, double t, double lb, double ub);
     
     void no_prior_propose(int i);
     
@@ -80,9 +80,9 @@ public:
     
     Branch *search_branch(Node *n1, Node *n2);
     
-    float random_non_root_time(float t0, float lb, float ub);
+    double random_non_root_time(double t0, double lb, double ub);
     
-    float random_root_time(int i, float lb);
+    double random_root_time(int i, double lb);
 };
 
 #endif /* DAG_hpp */

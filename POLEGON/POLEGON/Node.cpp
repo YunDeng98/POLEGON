@@ -7,7 +7,7 @@
 
 #include "Node.hpp"
 
-Node::Node(float t, int i) {
+Node::Node(double t, int i) {
     time = t;
     index = i;
 }

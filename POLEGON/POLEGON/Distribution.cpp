@@ -17,9 +17,9 @@ void Distribution::load_distribution(string filename) {
         cerr << "input file not found" << endl;
         exit(1);
     }
-    float x;
-    float y;
-    float r;
+    double x;
+    double y;
+    double r;
     while (fin >> x >> y >> r) {
         times.push_back(x);
         probs.push_back(y);
@@ -27,41 +27,41 @@ void Distribution::load_distribution(string filename) {
     }
 }
 
-float Distribution::propose(float lb, float ub) {
-    float lq = survival(lb);
-    float uq = survival(ub);
-    float r = uniform_random();
-    float q = lq*r + uq*(1 - r);
-    float x = inverse_survival(q);
+double Distribution::propose(double lb, double ub) {
+    double lq = survival(lb);
+    double uq = survival(ub);
+    double r = uniform_random();
+    double q = lq*r + uq*(1 - r);
+    double x = inverse_survival(q);
     if (x <= lb or x >= ub) {
         return 0.5*(lb + ub);
     }
     return x;
 }
 
-float Distribution::survival(float x) {
+double Distribution::survival(double x) {
     if (isinf(x)) {
         return 0;
     }
     auto it = upper_bound(times.begin(), times.end(), x);
     int index = (int) (it - times.begin());
-    float rate = rates[index - 1];
-    float delta = x - times[index - 1];
-    float prop = exp(-rate * delta);
-    float q = probs[index - 1]*prop;
+    double rate = rates[index - 1];
+    double delta = x - times[index - 1];
+    double prop = exp(-rate * delta);
+    double q = probs[index - 1]*prop;
     return q;
 }
 
-float Distribution::inverse_survival(float q) {
+double Distribution::inverse_survival(double q) {
     if (q == 0) {
-        return numeric_limits<float>::infinity();
+        return numeric_limits<double>::infinity();
     }
-    auto it = upper_bound(probs.begin(), probs.end(), q, std::greater<float>());
+    auto it = upper_bound(probs.begin(), probs.end(), q, std::greater<double>());
     int index = (int) (it - probs.begin());
-    float rate = rates[index - 1];
-    float prop = probs[index - 1]/q;
-    float delta = log(prop)/rate;
-    float x = times[index - 1] + delta;
+    double rate = rates[index - 1];
+    double prop = probs[index - 1]/q;
+    double delta = log(prop)/rate;
+    double x = times[index - 1] + delta;
     return x;
 }
 

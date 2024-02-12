@@ -18,12 +18,12 @@ void test_load_dag() {
 void test_coalescent_prior() {
     Distribution *d = new Distribution(10);
     d->load_distribution("/Users/yun_deng/Desktop/POLEGON/arg_files/distribution_50.txt");
-    vector<float> random_values = vector<float>(10000);
+    vector<double> random_values = vector<double>(10000);
     for (int i = 0; i< 10000; i++) {
-        random_values[i] = d->propose(0, numeric_limits<float>::infinity());
+        random_values[i] = d->propose(0, numeric_limits<double>::infinity());
     }
     ofstream output_file("/Users/yun_deng/Desktop/POLEGON/arg_files/coalescence_time_samples.txt");
-    for (float x : random_values) {
+    for (double x : random_values) {
         output_file << x << endl;
     }
 }

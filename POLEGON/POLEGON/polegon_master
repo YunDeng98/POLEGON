@@ -11,10 +11,14 @@ import tskit
 def write_root_branches(ts):
     left = 0
     right = 0
-    root = ts.first().root
+    tree = ts.first()
+    while tree.total_branch_length == 0:
+        tree.next()
+    left = tree.interval[0]
+    root = tree.root
     root_branches = []
     for tree in ts.trees():
-        if tree.root != root:
+        if tree.total_branch_length > 0 and tree.root != root:
             right = tree.interval[0]
             root_branch = [left, right, -1, root]
             root_branches.append(root_branch)
