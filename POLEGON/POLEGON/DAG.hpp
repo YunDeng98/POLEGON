@@ -38,13 +38,15 @@ public:
     
     DAG(double n);
     
-    void load_dag(string node_file, string branch_file, string mut_file);
+    void load_dag(string node_file, string branch_file);
+    
+    void load_dag(string node_file, string branch_file, Mutation_map &mm);
+    
+    void map_mutations(string mut_file);
     
     void compute_mutation_rates(double theta);
     
     void burn_in();
-    
-    // void MCMC(int n, Distribution *d);
     
     void no_prior_MCMC();
     
@@ -76,7 +78,9 @@ public:
     
     void load_branches(string branch_file);
     
-    void load_mutations(string mut_file);
+    void load_branches(string branch_file, Mutation_map &mm);
+    
+    // void load_mutations(string mut_file);
     
     Branch *search_branch(Node *n1, Node *n2);
     

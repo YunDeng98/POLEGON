@@ -15,36 +15,42 @@ void Mutation_map::load_map(string mut_map_file) {
         cerr << "input mutation map file not found" << endl;
         exit(1);
     }
-    double curr_pos = 0;
-    double prev_pos = 0;
-    double prev_rate = 0;
-    double curr_rate = 0;
-    while (fin >> curr_pos >> curr_rate) {
-        coordinates.push_back(curr_pos);
-        mutation_distance.push_back((curr_pos - prev_pos)*prev_rate);
-        prev_pos = curr_pos;
-        prev_rate = curr_rate;
+    mutation_distances.push_back(0);
+    double left;
+    double right;
+    double rate;
+    double mut_dist;
+    while (fin >> left >> right >> rate) {
+        coordinates.push_back(left);
+        mut_dist = mutation_distances.back() + rate*(right - left);
+        mutation_distances.push_back(mut_dist);
     }
+    sequence_length = right;
+    coordinates.push_back(sequence_length);
 }
 
 int Mutation_map::find_index(double x) {
     auto it = upper_bound(coordinates.begin(), coordinates.end(), x);
     it--;
     int index = (int) distance(coordinates.begin(), it);
-    assert(index >= 0 and index < coordinates.size() - 1);
+    assert(index >= 0 and index <= coordinates.size() - 1);
     return index;
 }
 
-double Mutation_map::mut_distance(double x) {
+double Mutation_map::mutation_distance(double x) {
     int index = find_index(x);
+    double prev_dist = mutation_distances[index];
+    double next_dist = mutation_distances[index+1];
     double p = (x - coordinates[index])/(coordinates[index+1] - coordinates[index]);
-    double d = mutation_distance[index]*(1 - p) + mutation_distance[index + 1]*p;
-    return d;
+    double dist = (1-p)*prev_dist + p*next_dist;
+    return dist;
 }
 
-double Mutation_map::mut_rate_sum(double x, double y) {
-    assert(x < y);
-    double sum = mut_distance(y) - mut_distance(x);
-    assert(sum > 0);
-    return sum;
+double Mutation_map::mutation_rate(double x, double y) {
+    return mutation_distance(y) - mutation_distance(x);
+}
+
+double Mutation_map::mean_rate() {
+    double mr = mutation_distances.back()/sequence_length;
+    return mr;
 }

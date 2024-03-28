@@ -6,7 +6,10 @@
 //
 
 #include <iostream>
-#include "Test.hpp"
+#include "DAG.hpp"
+#include "Distribution.hpp"
+#include "Scaler.hpp"
+#include "Mutation_map.hpp"
 
 int main(int argc, const char * argv[]) {
     double m = -1;
@@ -17,6 +20,7 @@ int main(int argc, const char * argv[]) {
     string input_prefix = "", output_prefix = "";
     int seed = 42;
     double Ne = 0;
+    string map_file = "";
     for (int i = 1; i < argc; ++i) {
         string arg = argv[i];
         if (arg == "-m") {
@@ -28,6 +32,18 @@ int main(int argc, const char * argv[]) {
                 m = stod(argv[++i]);
             } catch (const invalid_argument&) {
                 cerr << "Error: -m flag expects a number. " << endl;
+                exit(1);
+            }
+        }
+        else if (arg == "-mutation_map") {
+            if (i + 1 >= argc || argv[i+1][0] == '-') {
+                cerr << "Error: -mutation_map flag cannot be empty. " << endl;
+                exit(1);
+            }
+            try {
+                map_file = argv[++i];
+            } catch (const invalid_argument&) {
+                cerr << "Error: -mutation_map flag expects a string. " << endl;
                 exit(1);
             }
         }
@@ -126,8 +142,16 @@ int main(int argc, const char * argv[]) {
     string node_file = input_prefix + "_nodes.txt";
     string branch_file = input_prefix + "_branches.txt";
     string mut_file = input_prefix + "_muts.txt";
-    dag.load_dag(node_file, branch_file, mut_file);
-    dag.compute_mutation_rates(m);
+    if (map_file.empty()) {
+        dag.load_dag(node_file, branch_file);
+        dag.compute_mutation_rates(m);
+    } else {
+        Mutation_map mm = Mutation_map();
+        mm.load_map(map_file);
+        dag.load_dag(node_file, branch_file, mm);
+        m = mm.mean_rate();
+    }
+    dag.map_mutations(mut_file);
     for (int i = 0; i < burn_in; i++) {
         cout << "Burn-in iterations: " << i << endl;
         dag.no_prior_MCMC();

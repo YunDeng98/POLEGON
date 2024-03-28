@@ -29,7 +29,7 @@ public:
     
     double sequence_length = INT_MAX;
     vector<double> coordinates = {};
-    vector<double> mutation_distance = {};
+    vector<double> mutation_distances = {};
     
     Mutation_map();
     
@@ -37,9 +37,11 @@ public:
     
     int find_index(double x);
     
-    double mut_distance(double x);
+    double mutation_distance(double x);
     
-    double mut_rate_sum(double x, double y);
+    double mutation_rate(double x, double y);
+    
+    double mean_rate();
 
 };
 

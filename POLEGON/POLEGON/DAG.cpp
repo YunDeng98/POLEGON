@@ -11,10 +11,39 @@ DAG::DAG(double n) {
     Ne = n;
 }
 
-void DAG::load_dag(string node_file, string branch_file, string mut_file) {
+void DAG::load_dag(string node_file, string branch_file) {
     load_nodes(node_file);
     load_branches(branch_file);
-    load_mutations(mut_file);
+    num_posterior_samples = 1;
+}
+
+void DAG::load_dag(string node_file, string branch_file, Mutation_map &mm) {
+    load_nodes(node_file);
+    load_branches(branch_file, mm);
+    num_posterior_samples = 1;
+}
+
+void DAG::map_mutations(string mut_file) {
+    ifstream fin(mut_file);
+    if (!fin.good()) {
+        cerr << "input file not found" << endl;
+        exit(1);
+    }
+    double pos;
+    double n1;
+    double n2;
+    double s;
+    Node *ln;
+    Node *un;
+    Branch *b;
+    while (fin >> pos >> n1 >> n2 >> s) {
+        if (n2 >= 0) {
+            ln = nodes[n1];
+            un = nodes[(int) n2];
+            b = search_branch(ln, un);
+            b->mutation_count += 1;
+        }
+    }
 }
 
 void DAG::compute_mutation_rates(double theta) {
@@ -28,27 +57,7 @@ void DAG::burn_in() {
     num_posterior_samples = 0;
 }
 
-/*
-void DAG::MCMC(int n, Distribution *d) {
-    for (int i = 0; i < n; i++) {
-        int index = random_index();
-        propose(index, d);
-    }
-    num_posterior_samples += 1;
-    for (int i = 0; i < nodes.size(); i++) {
-        node_ages[i] += nodes[i]->time;
-    }
-}
- */
-
 void DAG::no_prior_MCMC() {
-    /*
-    int num_doubleing_nodes = (int) nodes.size() - num_leaf_nodes;
-    for (int i = 0; i < n; i++) {
-        int index = (i % num_doubleing_nodes) + num_leaf_nodes;
-        no_prior_propose(index);
-    }
-     */
     vector<int> permutation = get_permutation();
     for (int index : permutation) {
         no_prior_propose(index);
@@ -213,6 +222,9 @@ void DAG::load_nodes(string node_file) {
         count += 1;
     }
     node_ages.resize(nodes.size());
+    for (int i = 0; i < nodes.size(); i++) {
+        node_ages[i] = nodes[i]->time;
+    }
 }
 
 void DAG::load_branches(string branch_file) {
@@ -257,53 +269,52 @@ void DAG::load_branches(string branch_file) {
     }
 }
 
-void DAG::load_mutations(string mut_file) {
-    ifstream fin(mut_file);
+void DAG::load_branches(string branch_file, Mutation_map &mm) {
+    ifstream fin(branch_file);
     if (!fin.good()) {
         cerr << "input file not found" << endl;
         exit(1);
     }
-    double pos;
-    double n1;
-    double n2;
-    double s;
-    Node *ln;
+    double x;
+    double y;
+    double p;
+    double c;
+    double m;
     Node *un;
+    Node *ln;
     Branch *b;
-    while (fin >> pos >> n1 >> n2 >> s) {
-        if (n2 >= 0) {
-            ln = nodes[n1];
-            un = nodes[(int) n2];
-            b = search_branch(ln, un);
-            b->mutation_count += 1;
-        }
-    }
-}
-
-/*
-Branch *DAG::search_branch(Node *n1, Node *n2) {
-    int l = 0;
-    int u = (int) branches.size() - 1;
-    int m = 0.5*(l + u);
-    Branch *b = branches[m];
-    while (b->lower_node != n1 or b->upper_node != n2) {
-        if (b->upper_node->index < n2->index) {
-            l = m;
-            m = 0.5*(l + u);
-            b = branches[m];
-        } else if (b->upper_node->index == n2->index and b->lower_node->index < n1->index) {
-            l = m;
-            m = 0.5*(l + u);
-            b = branches[m];
+    map<pair<Node *, Node *>, double> branch_span = {};
+    map<pair<Node *, Node *>, double> branch_rates = {};
+    while (fin >> x >> y >> p >> c) {
+        if (p < 0) {
+            un = root;
         } else {
-            u = m;
-            m = 0.5*(l + u);
-            b = branches[m];
+            un = nodes[int(p)];
+        }
+        ln = nodes[int(c)];
+        assert(ln->index < un->index or un == root);
+        branch_span[{ln, un}] += y - x;
+        m = mm.mutation_rate(x, y)*Ne;
+        branch_rates[{ln, un}] += m;
+    }
+    for (auto &x : branch_span) {
+        if (x.first.second != root) {
+            b = new Branch(x.first.first, x.first.second);
+            b->span = x.second;
+            b->mutation_rate = branch_rates[{b->lower_node, b->upper_node}];
+            branches.push_back(b);
         }
     }
-    return branches[m];
+    sort(branches.begin(), branches.end(), compare_branch());
+    parents.resize(nodes.size());
+    children.resize(nodes.size());
+    for (Branch *b : branches) {
+        if (b->upper_node != root) {
+            parents[b->lower_node->index].insert(b);
+            children[b->upper_node->index].insert(b);
+        }
+    }
 }
-*/
 
 Branch *DAG::search_branch(Node *n1, Node *n2) {
     int l = 0;
