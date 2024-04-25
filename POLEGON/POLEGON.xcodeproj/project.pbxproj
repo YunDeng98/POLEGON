@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6A4D09B22B5B2DD700B654B8 /* Mutation_map.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6A4D09B02B5B2DD700B654B8 /* Mutation_map.cpp */; };
 		6AF11C2F2B2A84920024579B /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6AF11C2E2B2A84920024579B /* main.cpp */; };
 		6AF11C3B2B2A850C0024579B /* Distribution.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6AF11C362B2A850C0024579B /* Distribution.cpp */; };
 		6AF11C3C2B2A850C0024579B /* DAG.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6AF11C392B2A850C0024579B /* DAG.cpp */; };
@@ -30,6 +31,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		6A4D09B02B5B2DD700B654B8 /* Mutation_map.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Mutation_map.cpp; sourceTree = "<group>"; };
+		6A4D09B12B5B2DD700B654B8 /* Mutation_map.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Mutation_map.hpp; sourceTree = "<group>"; };
 		6AF11C2B2B2A84920024579B /* POLEGON */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = POLEGON; sourceTree = BUILT_PRODUCTS_DIR; };
 		6AF11C2E2B2A84920024579B /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		6AF11C352B2A850C0024579B /* DAG.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = DAG.hpp; sourceTree = "<group>"; };
@@ -90,6 +93,8 @@
 				6AF11C372B2A850C0024579B /* Branch.hpp */,
 				6AF11C392B2A850C0024579B /* DAG.cpp */,
 				6AF11C352B2A850C0024579B /* DAG.hpp */,
+				6A4D09B02B5B2DD700B654B8 /* Mutation_map.cpp */,
+				6A4D09B12B5B2DD700B654B8 /* Mutation_map.hpp */,
 				6AF11C362B2A850C0024579B /* Distribution.cpp */,
 				6AF11C382B2A850C0024579B /* Distribution.hpp */,
 				6AF11C2E2B2A84920024579B /* main.cpp */,
@@ -162,6 +167,7 @@
 				6AF11C492B2A85150024579B /* Scaler.cpp in Sources */,
 				6AF11C3B2B2A850C0024579B /* Distribution.cpp in Sources */,
 				6AF11C462B2A85150024579B /* Node.cpp in Sources */,
+				6A4D09B22B5B2DD700B654B8 /* Mutation_map.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -283,6 +289,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				GCC_OPTIMIZATION_LEVEL = 0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -291,6 +298,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				GCC_OPTIMIZATION_LEVEL = 0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

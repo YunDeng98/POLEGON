@@ -56,12 +56,32 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-Ne 2e4 -m 1.2e-8 -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/demo&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/demo&quot; -burn_in 10 -num_samples 100 -thin 10"
+            argument = "-Ne 2e4 -mutation_map  &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/map.txt&quot; -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/map&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/map&quot; -burn_in 10 -num_samples 100 -thin 5"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-Ne 4e4 -m 1.2e-8 -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/yri_bottleneck&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/new_yri_bottleneck&quot; -burn_in 10 -num_samples 100 -thin 10"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-m 1.2e-08 -Ne 19910.6565656573 -burn_in 10 -num_samples 100 -thin 10 -input /Users/yun_deng/Desktop/POLEGON/arg_files/singer_standard_ts_3_99 -output /Users/yun_deng/Desktop/POLEGON/arg_files/singer_standard_ts_3_99"
-            isEnabled = "YES">
+            argument = "-Ne 4e4 -m 1.2e-8 -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/singer_bottleneck_ts_3_99&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/new_singer_bottleneck_ts_3_99&quot; -burn_in 10 -num_samples 100 -thin 10 -scaling_rep 5"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-Ne 3e4 -m 1.2e-8 -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/reduced_singer_ceu_ts_9_99&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/reduced_singer_ceu_ts_9_99&quot; -burn_in 10 -num_samples 100 -thin 10 -scaling_rep 5"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-Ne 3e4 -m 1.2e-8 -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/singer_ceu_ts_9_99&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/singer_ceu_ts_9_99&quot; -burn_in 0 -num_samples 100 -thin 10 -scaling_rep 5"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-m 2e-08 -Ne 1e3 -burn_in 10 -num_samples 200 -thin 50 -input /Users/yun_deng/Desktop/POLEGON/arg_files/bgs -output /Users/yun_deng/Desktop/POLEGON/arg_files/new_bgs -scaling_rep 5"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-m 1.2e-08 -Ne 3e4 -burn_in 100 -num_samples 200 -thin 50 -input /Users/yun_deng/Desktop/POLEGON/arg_files/reduced_singer_ceu_ts_0_99 -output /Users/yun_deng/Desktop/POLEGON/arg_files/reduced_singer_ceu_ts_0_99 -scaling_rep 15"
+            isEnabled = "NO">
          </CommandLineArgument>
       </CommandLineArguments>
    </LaunchAction>
