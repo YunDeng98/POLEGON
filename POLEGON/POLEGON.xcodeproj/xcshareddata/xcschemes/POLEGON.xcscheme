@@ -52,35 +52,23 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "-Ne 2e4 -m 1.2e-8 -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/constant&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/constant&quot; -burn_in 10 -num_samples 100 -thin 5"
+            argument = "-Ne 2e4 -mutation_map  &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/chr1_mutation_map.txt&quot; -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/gbr_chr1_99&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/new_gbr_chr1_99&quot; -burn_in 10 -num_samples 100 -thin 5"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-Ne 2e4 -mutation_map  &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/map.txt&quot; -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/map&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/map&quot; -burn_in 10 -num_samples 100 -thin 5"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-Ne 2e4 -m 1.2e-8 -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/mcmc_test_ts_0&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/new_mcmc_test_ts_0&quot; -burn_in 10 -num_samples 100 -thin 5"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-Ne 3e4 -m 1.2e-8 -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/relate_ceu_ts_0_compressed&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/relate_ceu_ts_0_compressed&quot; -burn_in 10 -num_samples 100 -thin 5"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-Ne 4e4 -m 1.2e-8 -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/yri_bottleneck&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/new_yri_bottleneck&quot; -burn_in 10 -num_samples 100 -thin 10"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-Ne 4e4 -m 1.2e-8 -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/singer_bottleneck_ts_3_99&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/new_singer_bottleneck_ts_3_99&quot; -burn_in 10 -num_samples 100 -thin 10 -scaling_rep 5"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-Ne 3e4 -m 1.2e-8 -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/reduced_singer_ceu_ts_9_99&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/reduced_singer_ceu_ts_9_99&quot; -burn_in 10 -num_samples 100 -thin 10 -scaling_rep 5"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-Ne 3e4 -m 1.2e-8 -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/singer_ceu_ts_9_99&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/singer_ceu_ts_9_99&quot; -burn_in 0 -num_samples 100 -thin 10 -scaling_rep 5"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-m 2e-08 -Ne 1e3 -burn_in 10 -num_samples 200 -thin 50 -input /Users/yun_deng/Desktop/POLEGON/arg_files/bgs -output /Users/yun_deng/Desktop/POLEGON/arg_files/new_bgs -scaling_rep 5"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-m 1.2e-08 -Ne 3e4 -burn_in 100 -num_samples 200 -thin 50 -input /Users/yun_deng/Desktop/POLEGON/arg_files/reduced_singer_ceu_ts_0_99 -output /Users/yun_deng/Desktop/POLEGON/arg_files/reduced_singer_ceu_ts_0_99 -scaling_rep 15"
+            argument = "-Ne 2e4 -m 1.2e-8 -input &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/mcmc_test_ts_0&quot; -output &quot;/Users/yun_deng/Desktop/POLEGON/arg_files/mcmc_test_ts_0&quot; -burn_in 10 -num_samples 20 -thin 20"
             isEnabled = "NO">
          </CommandLineArgument>
       </CommandLineArguments>

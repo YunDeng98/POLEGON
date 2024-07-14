@@ -168,7 +168,7 @@ int main(int argc, const char * argv[]) {
         Scaler scaler = Scaler();
         scaler.rescale(dag, Ne*m);
     }
-    string new_node_file = input_prefix + "_new_nodes.txt";
+    string new_node_file = input_prefix + "_fast_new_nodes.txt";
     dag.write_node_ages(new_node_file);
     return 0;
 }

@@ -64,6 +64,8 @@ public:
     
     double acceptance_ratio(int i, double t);
     
+    double fast_acceptance_ratio(int i, double t0, double t);
+    
     double no_prior_acceptance_ratio(int i, double t, double lb, double ub);
     
     void no_prior_propose(int i);
