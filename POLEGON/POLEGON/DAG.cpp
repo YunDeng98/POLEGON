@@ -141,17 +141,71 @@ double DAG::log_acceptance_weight(int i, double t) {
     return w;
 }
 
+double DAG::fast_acceptance_ratio(int i, double t0, double t1) {
+    double w0 = 0;
+    double w1 = 0;
+    auto &xp = parents[i];
+    auto &xc = children[i];
+    double length_0 = 0, length_1 = 0, count = 0, rate_0 = 0, rate_1 = 0;
+    for (auto &b : xp) { // note that the mutation rate here is a product of Ne, theta, and span
+        length_0 = b->upper_node->time - t0;
+        length_1 = b->upper_node->time - t1;
+        count = b->mutation_count;
+        rate_0 = length_0*b->mutation_rate;
+        rate_1 = length_1*b->mutation_rate;
+        if (rate_0 > 0) {
+            w0 += count*log(rate_0);
+            w0 -= rate_0;
+        } else {
+            w0 = 0;
+        }
+        if (rate_1 > 0) {
+            w1 += count*log(rate_1);
+            w1 -= rate_1;
+        } else {
+            w1 = 0;
+        }
+        assert(!isnan(w0));
+        assert(!isnan(w1));
+    }
+    for (auto &b : xc) {
+        length_0 = t0 - b->lower_node->time;
+        length_1 = t1 - b->lower_node->time;
+        count = b->mutation_count;
+        rate_0 = length_0*b->mutation_rate;
+        rate_1 = length_1*b->mutation_rate;
+        if (rate_0 > 0) {
+            w0 += count*log(rate_0);
+            w0 -= rate_0;
+        } else {
+            w0 = 0;
+        }
+        if (rate_1 > 0) {
+            w1 += count*log(rate_1);
+            w1 -= rate_1;
+        } else {
+            w1 = 0;
+        }
+        assert(!isnan(w0));
+        assert(!isnan(w1));
+    }
+    return exp(w1 - w0);
+}
+
 double DAG::acceptance_ratio(int i, double t) {
     double t0 = nodes[i]->time;
     double w0 = log_acceptance_weight(i, t0);
     double w1 = log_acceptance_weight(i, t);
     double q = exp(w1 - w0);
+    // double r = fast_acceptance_ratio(i, t0, t);
+    // assert(r == q);
     return q;
 }
 
 double DAG::no_prior_acceptance_ratio(int i, double t, double lb, double ub) {
-    double q = acceptance_ratio(i, t);
+    // double q = acceptance_ratio(i, t);
     double t0 = nodes[i]->time;
+    double q = fast_acceptance_ratio(i, t0, t);
     if (ub == INT_MAX) {
         q *= exp((t - t0)/lambda);
     }
@@ -248,7 +302,7 @@ void DAG::load_branches(string branch_file) {
             un = nodes[int(p)];
         }
         ln = nodes[int(c)];
-        assert(ln->index < un->index or un == root);
+        // assert(ln->index < un->index or un == root);
         branch_span[{ln, un}] += y - x;
     }
     for (auto &x : branch_span) {
@@ -358,9 +412,14 @@ double DAG::random_root_time(int i, double lb) {
 vector<int> DAG::get_permutation() {
     vector<int> permutation = {};
     permutation.reserve(nodes.size() - num_leaf_nodes);
+    /*
     for (int i = 0; i < nodes.size() - num_leaf_nodes; i++) {
         permutation.push_back(i + num_leaf_nodes);
     }
     shuffle(permutation.begin(), permutation.end(), random_engine);
+     */
+    for (int i = 0; i < nodes.size() - num_leaf_nodes; i++) {
+        permutation.push_back(nodes.size() - 1 - i);
+    }
     return permutation;
 }

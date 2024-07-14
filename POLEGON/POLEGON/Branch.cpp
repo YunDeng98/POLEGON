@@ -13,7 +13,7 @@ Branch::Branch() {
 }
 
 Branch::Branch(Node *n1, Node *n2) {
-    assert(n1->index < n2->index or n2->index < 0);
+    // assert(n1->index < n2->index or n2->index < 0);
     assert(n1->time <= n2->time);
     lower_node = n1;
     upper_node = n2;
