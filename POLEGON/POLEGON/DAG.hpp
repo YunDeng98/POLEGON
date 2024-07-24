@@ -31,6 +31,8 @@ public:
     Node *root = new Node(numeric_limits<double>::infinity(), INT_MAX);
     vector<Node *> nodes = {};
     vector<double> node_ages = {};
+    vector<vector<double>> node_age_samples = {};
+    vector<vector<double>> scaled_node_age_samples = {};
     vector<Branch *> branches = {};
     vector<set<Branch *>> parents = {};
     vector<set<Branch *>> children = {};
@@ -48,9 +50,17 @@ public:
     
     void burn_in();
     
+    void record_node_ages();
+    
+    void record_scaled_node_ages();
+    
     void no_prior_MCMC();
     
+    void sample(int i);
+    
     void posterior_average();
+    
+    void scaled_sample_average();
     
     void write_node_ages(string filename);
     
