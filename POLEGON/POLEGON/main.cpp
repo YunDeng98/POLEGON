@@ -162,7 +162,9 @@ int main(int argc, const char * argv[]) {
         for (int j = 0; j < spacing; j++) {
             dag.no_prior_MCMC();
         }
+        dag.record_node_ages();
     }
+    /*
     dag.posterior_average();
     for (int i = 0; i < scaling_rep; i++) {
         Scaler scaler = Scaler();
@@ -170,6 +172,20 @@ int main(int argc, const char * argv[]) {
     }
     string new_node_file = input_prefix + "_new_nodes.txt";
     dag.write_node_ages(new_node_file);
+     */
+    for (int i = 0; i < num_samples; i++) {
+        cout << "Sample index: " << i << endl;
+        dag.sample(i);
+        for (int k = 0; k < 1; k++) {
+            Scaler scaler = Scaler();
+            scaler.rescale(dag, Ne*m);
+        }
+        dag.record_scaled_node_ages();
+        // string new_node_file = input_prefix + "_new_nodes_" + to_string(i) + ".txt";
+        // dag.write_node_ages(new_node_file);
+    }
+    dag.scaled_sample_average();
+    dag.write_node_ages(input_prefix + "_new_nodes.txt");
     return 0;
 }
 

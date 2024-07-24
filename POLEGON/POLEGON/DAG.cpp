@@ -57,6 +57,18 @@ void DAG::burn_in() {
     num_posterior_samples = 0;
 }
 
+void DAG::record_node_ages() {
+    for (int i = 0; i < node_ages.size(); i++) {
+        node_age_samples[i].push_back(nodes[i]->time);
+    }
+}
+
+void DAG::record_scaled_node_ages() {
+    for (int i = 0; i < node_ages.size(); i++) {
+        scaled_node_age_samples[i].push_back(nodes[i]->time);
+    }
+}
+
 void DAG::no_prior_MCMC() {
     vector<int> permutation = get_permutation();
     for (int index : permutation) {
@@ -68,9 +80,24 @@ void DAG::no_prior_MCMC() {
     }
 }
 
+void DAG::sample(int i) {
+    for (int j = 0; j < node_ages.size(); j++) {
+        nodes[j]->time = node_age_samples[j][i];
+    }
+}
+
 void DAG::posterior_average() {
     for (int i = 0; i < node_ages.size(); i++) {
         nodes[i]->time = node_ages[i]/num_posterior_samples;
+    }
+}
+
+void DAG::scaled_sample_average() {
+    num_posterior_samples = (int) scaled_node_age_samples[0].size();
+    double sum = 0;
+    for (int i = 0; i < node_ages.size(); i++) {
+        sum = accumulate(scaled_node_age_samples[i].begin(), scaled_node_age_samples[i].end(), 0.0);
+        nodes[i]->time = sum/num_posterior_samples;
     }
 }
 
@@ -276,6 +303,8 @@ void DAG::load_nodes(string node_file) {
         count += 1;
     }
     node_ages.resize(nodes.size());
+    node_age_samples.resize(nodes.size());
+    scaled_node_age_samples.resize(nodes.size());
     for (int i = 0; i < nodes.size(); i++) {
         node_ages[i] = nodes[i]->time;
     }
