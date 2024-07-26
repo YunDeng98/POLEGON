@@ -110,6 +110,19 @@ void DAG::write_node_ages(string filename) {
     file.close();
 }
 
+void DAG::write_node_age_samples(string filename) {
+    ofstream file;
+    file.open(filename);
+    num_posterior_samples = (int) node_age_samples[0].size();
+    for (int i = 0; i < scaled_node_age_samples.size(); i++) {
+        for (int j = 0; j < num_posterior_samples; j++) {
+            file << std::setprecision(std::numeric_limits<double>::max_digits10) << scaled_node_age_samples[i][j]*Ne << " ";
+        }
+        file << "" << endl;
+    }
+    file.close();
+}
+
 // private methods:
 
 double DAG::lower_bound(int i) {
@@ -305,6 +318,7 @@ void DAG::load_nodes(string node_file) {
     node_ages.resize(nodes.size());
     node_age_samples.resize(nodes.size());
     scaled_node_age_samples.resize(nodes.size());
+    scaling_factors.resize(nodes.size());
     for (int i = 0; i < nodes.size(); i++) {
         node_ages[i] = nodes[i]->time;
     }
@@ -423,7 +437,8 @@ double DAG::random_non_root_time(double t0, double lb, double ub) {
     assert(ub != INT_MAX);
     double t = lb + uniform_random()*(ub - lb);
     if (t <= lb or t >= ub) {
-        t = 0.5*(lb + ub);
+        // t = 0.5*(lb + ub);
+        t = lb + uniform_random()*(ub - lb);
     }
     return t;
 }
@@ -431,7 +446,7 @@ double DAG::random_non_root_time(double t0, double lb, double ub) {
 double DAG::random_root_time(int i, double lb) {
     double q = uniform_random();
     double delta = -lambda*log(q);
-    while (delta <= 0.001 or delta > 10) {
+    while (delta <= 0.0001 or delta > max_step) { // max size of the exploration
         q = uniform_random();
         delta = -lambda*log(q);
     }
@@ -441,14 +456,16 @@ double DAG::random_root_time(int i, double lb) {
 vector<int> DAG::get_permutation() {
     vector<int> permutation = {};
     permutation.reserve(nodes.size() - num_leaf_nodes);
-    /*
     for (int i = 0; i < nodes.size() - num_leaf_nodes; i++) {
-        permutation.push_back(i + num_leaf_nodes);
-    }
-    shuffle(permutation.begin(), permutation.end(), random_engine);
-     */
-    for (int i = 0; i < nodes.size() - num_leaf_nodes; i++) {
-        permutation.push_back(nodes.size() - 1 - i);
+        permutation.push_back((int) nodes.size() - 1 - i);
     }
     return permutation;
+}
+
+double DAG::median(std::vector<double>& vec) {
+    int size = (int) vec.size();
+    assert(size > 0);
+    vector<double> temp(vec);
+    nth_element(temp.begin(), temp.begin() + size/2, temp.end());
+    return vec[size/2];
 }

@@ -33,10 +33,12 @@ public:
     vector<double> node_ages = {};
     vector<vector<double>> node_age_samples = {};
     vector<vector<double>> scaled_node_age_samples = {};
+    vector<double> scaling_factors = {};
     vector<Branch *> branches = {};
     vector<set<Branch *>> parents = {};
     vector<set<Branch *>> children = {};
     int updates = 0;
+    double max_step = 10.0;
     
     DAG(double n);
     
@@ -61,6 +63,8 @@ public:
     void posterior_average();
     
     void scaled_sample_average();
+    
+    void write_node_age_samples(string filename);
     
     void write_node_ages(string filename);
     
@@ -99,6 +103,8 @@ public:
     double random_non_root_time(double t0, double lb, double ub);
     
     double random_root_time(int i, double lb);
+    
+    double median(vector<double> &values);
 };
 
 #endif /* DAG_hpp */

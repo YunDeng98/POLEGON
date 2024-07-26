@@ -17,10 +17,12 @@ int main(int argc, const char * argv[]) {
     int burn_in = -1;
     int spacing = -1;
     int scaling_rep = 1;
+    double max_step = 10.0;
     string input_prefix = "", output_prefix = "";
     int seed = 42;
     double Ne = 0;
     string map_file = "";
+    bool write_samples = false;
     for (int i = 1; i < argc; ++i) {
         string arg = argv[i];
         if (arg == "-m") {
@@ -133,12 +135,28 @@ int main(int argc, const char * argv[]) {
                 exit(1);
             }
         }
+        else if (arg == "-write_samples") {
+            write_samples = true;
+        }
+        else if (arg == "-max_step") {
+            if (i + 1 >= argc || argv[i+1][0] == '-') {
+                cerr << "Error: -max_step flag cannot be empty. " << endl;
+                exit(1);
+            }
+            try {
+                 max_step = stod(argv[++i]);
+            } catch (const invalid_argument&) {
+                cerr << "Error: -max_step flag expects a number. " << endl;
+                exit(1);
+            }
+        }
         else {
             cerr << "Error: Unknown flag. " << arg << endl;
             exit(1);
         }
     }
     DAG dag = DAG(Ne);
+    dag.max_step = max_step;
     string node_file = input_prefix + "_nodes.txt";
     string branch_file = input_prefix + "_branches.txt";
     string mut_file = input_prefix + "_muts.txt";
@@ -166,12 +184,14 @@ int main(int argc, const char * argv[]) {
     }
     /*
     dag.posterior_average();
-    for (int i = 0; i < scaling_rep; i++) {
+    for (int i = 0; i < 1; i++) {
         Scaler scaler = Scaler();
         scaler.rescale(dag, Ne*m);
     }
     string new_node_file = input_prefix + "_new_nodes.txt";
     dag.write_node_ages(new_node_file);
+    string new_node_samples_file = input_prefix + "_new_nodes_samples.txt";
+    dag.write_node_age_samples(new_node_samples_file);
      */
     for (int i = 0; i < num_samples; i++) {
         cout << "Sample index: " << i << endl;
@@ -181,11 +201,14 @@ int main(int argc, const char * argv[]) {
             scaler.rescale(dag, Ne*m);
         }
         dag.record_scaled_node_ages();
-        // string new_node_file = input_prefix + "_new_nodes_" + to_string(i) + ".txt";
-        // dag.write_node_ages(new_node_file);
     }
-    dag.scaled_sample_average();
-    dag.write_node_ages(input_prefix + "_new_nodes.txt");
+    if (write_samples) {
+        string node_samples_file = input_prefix + "_node_samples.txt";
+        dag.write_node_age_samples(node_samples_file);
+    } else {
+        dag.scaled_sample_average();
+        dag.write_node_ages(input_prefix + "_new_nodes.txt");
+    }
     return 0;
 }
 

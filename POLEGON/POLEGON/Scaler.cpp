@@ -157,12 +157,19 @@ void Scaler::rescale(DAG &dag, double theta) {
     map_mutations(dag);
     compute_new_grid(theta);
     int k = 0;
+    int node_index = 0;
     double t;
     for (int i = 0; i < sorted_nodes.size(); i++) {
         while (sorted_nodes[i]->time > old_grid[k+1]) {
             k++;
         }
         t = scaling_factors[k]*(sorted_nodes[i]->time - old_grid[k]) + new_grid[k];
+        node_index = sorted_nodes[i]->index;
+        if (sorted_nodes[i]->is_sample) {
+            dag.scaling_factors[node_index] = 1;
+        } else {
+            dag.scaling_factors[node_index] = t/dag.nodes[node_index]->time;
+        }
         sorted_nodes[i]->time = t;
     }
     for (int i = 0; i < sorted_nodes.size() - 1; i++) {
