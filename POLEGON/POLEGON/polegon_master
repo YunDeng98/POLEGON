@@ -118,7 +118,7 @@ def read_mts(node_file, branch_file, mutation_file):
     new_ts = tables.tree_sequence()
     return new_ts
 
-def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, input_prefix, output_prefix):
+def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, input_prefix, output_prefix, write_samples):
     old_ts = tskit.load(input_prefix + ".trees")
     write_arg(old_ts, f"{input_prefix}_nodes.txt", f"{input_prefix}_branches.txt")
     write_muts(old_ts, f"{input_prefix}_muts.txt")
@@ -126,6 +126,8 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, input_pref
     script_dir = os.path.dirname(os.path.realpath(__file__))
     polegon_binary = os.path.join(script_dir, 'polegon')
     polegon_command = [polegon_binary, "-m", f"{m}", "-Ne", f"{Ne}", "-burn_in", f"{burn_in}", "-num_samples", f"{num_samples}", "-thin", f"{thin}", "-scaling_rep", f"{scaling_rep}", "-input", f"{input_prefix}", "-output", f"{output_prefix}"]
+    if write_samples:
+        polegon_command = polegon_command + ["-write_samples"]
     print("Run polegon command: " + ' '.join(polegon_command))
     result = subprocess.run(polegon_command, capture_output=True, text=True)
     if result.returncode == 0:
@@ -134,9 +136,9 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, input_pref
         new_ts.dump(output_prefix + ".trees")
     else:
         print("polegon failed")
-    for f in [f"{input_prefix}_nodes.txt", f"{input_prefix}_branches.txt", f"{input_prefix}_muts.txt", f"{input_prefix}_new_nodes.txt"]:
-        if os.path.exists(f):
-            os.remove(f)
+    #for f in [f"{input_prefix}_nodes.txt", f"{input_prefix}_branches.txt", f"{input_prefix}_muts.txt", f"{input_prefix}_new_nodes.txt"]:
+        #if os.path.exists(f):
+            #os.remove(f)
     return
 
 def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, input_prefix, output_prefix, write_samples):
@@ -175,7 +177,7 @@ def main():
     parser.add_argument('-thin', type=int, required=False, default=10, help='Thinning interval length for MCMC.')
     parser.add_argument('-input', type=str, required=True, help='Input .trees file prefix')
     parser.add_argument('-output', type=str, required=True, help='Output new .trees prefix')
-    parser.add_argument('-write_samples', action='store_ture', help='Turn on writing samples.')    
+    parser.add_argument('-write_samples', action='store_true', help='Turn on writing samples.')    
    
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
