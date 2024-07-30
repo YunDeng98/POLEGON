@@ -183,7 +183,7 @@ int main(int argc, const char * argv[]) {
         dag.record_node_ages();
     }
     dag.posterior_average();
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < scaling_rep; i++) {
         Scaler scaler = Scaler();
         scaler.rescale(dag, Ne*m);
     }
@@ -198,12 +198,9 @@ int main(int argc, const char * argv[]) {
         }
         dag.record_scaled_node_ages();
     }
-    dag.scaled_sample_average();
-    for (int i = 0; i < scaling_rep; i++) {
-        Scaler scaler = Scaler();
-        scaler.rescale(dag, Ne*m);
+    if (write_samples) {
+        string node_samples_file = input_prefix + "_node_samples.txt";
+        dag.write_node_age_samples(node_samples_file);
     }
-    string node_samples_file = input_prefix + "_node_samples.txt";
-    dag.write_node_age_samples(node_samples_file);
     return 0;
 }
