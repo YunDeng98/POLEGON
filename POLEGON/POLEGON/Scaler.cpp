@@ -40,6 +40,15 @@ void Scaler::compute_deltas(DAG &dag) {
      */
 }
 
+void Scaler::compute_accumulated_arg_length() {
+    rates.resize(sorted_nodes.size());
+    accumulated_arg_length.resize(sorted_nodes.size());
+    partial_sum(node_deltas.begin(), node_deltas.end(), rates.begin());
+    for (int i = 1; i < sorted_nodes.size(); i++) {
+        accumulated_arg_length[i] = accumulated_arg_length[i-1] + rates[i-1]*(sorted_nodes[i]->time - sorted_nodes[i-1]->time);
+    }
+}
+
 /*
 void Scaler::compute_old_grid() {
     double arg_length = 0;
@@ -79,12 +88,15 @@ void Scaler::compute_old_grid() {
 
 void Scaler::compute_old_grid() {
     expected_arg_length.resize(num_windows);
+    compute_accumulated_arg_length();
+    /*
     rates.resize(sorted_nodes.size());
     accumulated_arg_length.resize(sorted_nodes.size());
     partial_sum(node_deltas.begin(), node_deltas.end(), rates.begin());
     for (int i = 1; i < sorted_nodes.size(); i++) {
         accumulated_arg_length[i] = accumulated_arg_length[i-1] + rates[i-1]*(sorted_nodes[i]->time - sorted_nodes[i-1]->time);
     }
+     */
     double unit_arg_length = accumulated_arg_length.back()/num_windows;
     double partial_arg_length = 0;
     int new_index = 0;
@@ -176,3 +188,74 @@ void Scaler::rescale(DAG &dag, double theta) {
         assert(sorted_nodes[i]->time <= sorted_nodes[i+1]->time);
     }
 }
+
+// private:
+
+/*
+double Scaler::arg_length(double t) {
+    if (t >= sorted_nodes.back()->time) {
+        return accumulated_arg_length.back();
+    } else if (t == 0) {
+        return 0.0;
+    }
+    auto it = lower_bound(sorted_nodes.begin(), sorted_nodes.end(), t, [](const Node* node, double t) {return node->time < t;});
+    int index = (int) (it - sorted_nodes.begin());
+    double p = (t - sorted_nodes[index]->time)/(sorted_nodes[index+1]->time - sorted_nodes[index]->time);
+    double l = p*accumulated_arg_length[index+1] + (1 - p)*accumulated_arg_length[index];
+    return l;
+}
+
+void Scaler::add_branch_length(Scaler &scaler) {
+    expected_arg_length.resize(num_windows);
+    for (int i = 0; i < num_windows; i++) {
+        expected_arg_length[i] += scaler.arg_length(old_grid[i+1]) - scaler.arg_length(old_grid[i]);
+    }
+}
+
+void Scaler::all_sample_rescale(DAG &dag, double theta) {
+    compute_new_grid(theta);
+    int k = 0;
+    int node_index = 0;
+    double t;
+    for (int i = 0; i < sorted_nodes.size(); i++) {
+        while (sorted_nodes[i]->time > old_grid[k+1]) {
+            k++;
+        }
+        t = scaling_factors[k]*(sorted_nodes[i]->time - old_grid[k]) + new_grid[k];
+        node_index = sorted_nodes[i]->index;
+        if (sorted_nodes[i]->is_sample) {
+            dag.scaling_factors[node_index] = 1;
+        } else {
+            dag.scaling_factors[node_index] = t/dag.nodes[node_index]->time;
+        }
+        sorted_nodes[i]->time = t;
+    }
+    for (int i = 0; i < sorted_nodes.size() - 1; i++) {
+        assert(sorted_nodes[i]->time <= sorted_nodes[i+1]->time);
+    }
+}
+
+double Scaler::rescale_time(double t) {
+    double new_time = 0;
+    if (t == 0) {
+        return 0;
+    } else if (t >= old_grid.back()) {
+        new_time = scaling_factors.back()*(t - old_grid[num_windows - 1]) + new_grid[num_windows - 1];
+    }
+    auto it = lower_bound(old_grid.begin(), old_grid.end(), t);
+    int index = (int) (it - old_grid.begin());
+    new_time = scaling_factors[index]*(t - old_grid[index]) + new_grid[index];
+    return new_time;
+}
+
+void Scaler::rescale_samples(DAG &dag) {
+    double new_time = 0;
+    int num_samples = (int) dag.node_age_samples.front().size();
+    for (int i = 0; i < dag.nodes.size(); i++) {
+        for (int k = 0; k < num_samples; k++) {
+            new_time = rescale_time(dag.node_age_samples[i][k]);
+            dag.scaled_node_age_samples[i].push_back(new_time);
+        }
+    }
+}
+*/

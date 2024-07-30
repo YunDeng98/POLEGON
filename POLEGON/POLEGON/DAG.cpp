@@ -446,7 +446,7 @@ double DAG::random_non_root_time(double t0, double lb, double ub) {
 double DAG::random_root_time(int i, double lb) {
     double q = uniform_random();
     double delta = -lambda*log(q);
-    while (delta <= 0.0001 or delta > max_step) { // max size of the exploration
+    while (delta > max_step) { // max size of the exploration
         q = uniform_random();
         delta = -lambda*log(q);
     }

@@ -31,6 +31,8 @@ public:
     
     void compute_deltas(DAG &dag);
     
+    void compute_accumulated_arg_length();
+    
     void compute_old_grid();
     
     void compute_new_grid(double theta);
@@ -40,6 +42,9 @@ public:
     void add_mutation(double w, double lb, double ub);
     
     void rescale(DAG &dag, double theta);
+    
+    // void all_sample_rescale(DAG &dag, double theta);
+    
 };
 
 #endif /* Scaler_hpp */

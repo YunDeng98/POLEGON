@@ -16,7 +16,7 @@ int main(int argc, const char * argv[]) {
     int num_samples = -1;
     int burn_in = -1;
     int spacing = -1;
-    int scaling_rep = 1;
+    int scaling_rep = 0;
     double max_step = 10.0;
     string input_prefix = "", output_prefix = "";
     int seed = 42;
@@ -182,7 +182,6 @@ int main(int argc, const char * argv[]) {
         }
         dag.record_node_ages();
     }
-    /*
     dag.posterior_average();
     for (int i = 0; i < 1; i++) {
         Scaler scaler = Scaler();
@@ -190,46 +189,21 @@ int main(int argc, const char * argv[]) {
     }
     string new_node_file = input_prefix + "_new_nodes.txt";
     dag.write_node_ages(new_node_file);
-    string new_node_samples_file = input_prefix + "_new_nodes_samples.txt";
-    dag.write_node_age_samples(new_node_samples_file);
-     */
     for (int i = 0; i < num_samples; i++) {
         cout << "Sample index: " << i << endl;
         dag.sample(i);
-        for (int k = 0; k < 1; k++) {
+        for (int k = 0; k < scaling_rep; k++) {
             Scaler scaler = Scaler();
             scaler.rescale(dag, Ne*m);
         }
         dag.record_scaled_node_ages();
     }
-    if (write_samples) {
-        string node_samples_file = input_prefix + "_node_samples.txt";
-        dag.write_node_age_samples(node_samples_file);
-    } else {
-        dag.scaled_sample_average();
-        dag.write_node_ages(input_prefix + "_new_nodes.txt");
+    dag.scaled_sample_average();
+    for (int i = 0; i < scaling_rep; i++) {
+        Scaler scaler = Scaler();
+        scaler.rescale(dag, Ne*m);
     }
+    string node_samples_file = input_prefix + "_node_samples.txt";
+    dag.write_node_age_samples(node_samples_file);
     return 0;
 }
-
-/*
-int main(int argc, const char * argv[]) {
-    // insert code here...
-    // test_load_dag();
-    // test_coalescent_prior();
-    // test_sampling();
-    // test_tsinfer_topology();
-    // test_singer_topology();
-    // test_singer_demo_topology();
-    test_no_prior_sampling();
-    // test_scaling();
-    // test_demography();
-    // test_demo_scaling();
-    // test_bottleneck();
-    // test_bgs();
-    // test_pairwise_demo();
-    // test_migration();
-    std::cout << "Hello, World!\n";
-    return 0;
-}
-*/

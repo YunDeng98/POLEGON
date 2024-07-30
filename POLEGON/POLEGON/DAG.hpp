@@ -26,7 +26,7 @@ public:
     
     int num_leaf_nodes = 0;
     double Ne = 1;
-    double lambda = 10;
+    double lambda = 5;
     int num_posterior_samples = 0;
     Node *root = new Node(numeric_limits<double>::infinity(), INT_MAX);
     vector<Node *> nodes = {};
