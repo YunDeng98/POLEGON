@@ -199,7 +199,7 @@ int main(int argc, const char * argv[]) {
         dag.record_scaled_node_ages();
     }
     if (write_samples) {
-        string node_samples_file = input_prefix + "_node_samples.txt";
+        string node_samples_file = output_prefix + "_node_samples.txt";
         dag.write_node_age_samples(node_samples_file);
     }
     return 0;

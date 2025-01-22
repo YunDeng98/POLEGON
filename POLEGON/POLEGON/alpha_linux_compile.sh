@@ -23,6 +23,8 @@ g++ -std=c++17 -O3 -g -static *.cpp -o $VERSION_DIR/polegon
 g++ -std=c++17 -g -static *.cpp -o $VERSION_DIR/polegon_debug
 
 # Copy additional files
+cp $VERSION_DIR/polegon polegon
+cp $VERSION_DIR/polegon_debug polegon_debug
 cp polegon_master $VERSION_DIR/polegon_master
 cp ../../LICENSE $VERSION_DIR/LICENSE
 
