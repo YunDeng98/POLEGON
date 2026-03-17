@@ -1,6 +1,6 @@
 //
 //  Node.cpp
-//  arg_branch_length
+//  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
 //
@@ -19,4 +19,3 @@ bool compare_node(const Node *n1, const Node *n2) {
         return n1->index < n2->index;
     }
 }
-

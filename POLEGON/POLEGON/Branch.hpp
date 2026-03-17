@@ -1,6 +1,6 @@
 //
 //  Branch.hpp
-//  arg_branch_length
+//  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
 //
@@ -12,23 +12,23 @@
 #include "Node.hpp"
 
 class Branch {
-    
+
 public:
-    
+
     Node *upper_node = nullptr;
     Node *lower_node = nullptr;
     double span = 0;
     double mutation_count = 0;
     double mutation_rate = 0;
-    
+
     Branch();
-    
+
     Branch(Node *n1, Node *n2);
-    
+
 };
 
 struct compare_branch {
-    
+
     bool operator() (const Branch *b1, const Branch *b2) const {
         if (b1->upper_node->index != b2->upper_node->index) {
             return b1->upper_node->index < b2->upper_node->index;
