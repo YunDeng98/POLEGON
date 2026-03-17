@@ -1,6 +1,6 @@
 //
 //  random_utils.hpp
-//  arg_branch_length
+//  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
 //
@@ -18,6 +18,7 @@
 extern std::mt19937 random_engine;
 extern std::uniform_real_distribution<> uniform_distribution;
 
-double uniform_random();
+void seed_random_engine(int seed);
+double uniform_random(); // redraws once if result is within 1e-5 of 0 or 1
 
 #endif /* random_utils_hpp */

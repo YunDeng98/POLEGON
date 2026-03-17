@@ -1,14 +1,14 @@
 ![Logo](POLEGON.png)
 # POLEGON
-POLEGON stands for **P**rior-**O**blivious **L**ength **E**stimation in **G**enealogies with **O**riented **N**etwork. POLEGON works with inferred Ancestral Recombination Graph (ARG) to re-calibrate the branch length, **without the usage of any prior**. The inferred ARGs should be in tskit format, with mutations mapped to branches. It is also important that the genealogies in the ARG should be **linked**, in that the adjacent trees should differ relatively small. After the branch length has been inferred, the population size history can be subsequently inferred with the calibrated branch length.
+POLEGON stands for **P**rior-**O**blivious **L**ength **E**stimation in **G**enealogies with **O**riented **N**etwork. POLEGON works with inferred Ancestral Recombination Graph (ARG) to re-calibrate the branch length, **without the usage of any prior**. The inferred ARGs should be in tskit format, with mutations mapped to branches. It is also important that the genealogies in the ARG should be **linked**, in that the adjacent trees should differ relatively small. After the branch length has been inferred, downstream analyses like inference of population size history can be subsequently done using the calibrated branch length.
 
-The details of the algorithms can be found at: [add some link], which is also the citation source. 
+The details of the algorithms can be found at: https://doi.org/10.1073/pnas.2504461122, which is also the citation source.
 
 # Input and output
-POLEGON takes .trees files with tskit tree sequence format (of course there need to be mutations in it!). Its output is also in tree sequence format, for both posterior samples and posterior average. 
+POLEGON takes .trees files with tskit tree sequence format (of course there need to be mutations in it!). By default it writes all posterior samples to `<output>_node_samples.txt` and the posterior mean tree sequence to `<output>.trees`.
 
 # Basic usage
-Fixated on the topology, POLEGON can generate you the posterior samples of the ARG and the posterior average of them. 
+Fixated on the topology, POLEGON can generate you the posterior samples of the ARG and the posterior average of them.
 
 The basic commands is:
 
@@ -16,26 +16,43 @@ The basic commands is:
 polegon_master -m mutation_rate -input original_tree_sequence -output updated_tree_sequence -num_samples N -thin K -scaling_rep L
 ```
 
-The following details to these arguments can be displayed if you simply type `polegon`
+The following details to these arguments can be displayed if you simply type `polegon_master`
 
-|flag|required?|details|  
-|-------------------|-----|---|  
+|flag|required?|details|
+|-------------------|-----|---|
 |**-input**|required|the prefix of the tree sequence file|
 |**-output**|required|the prefix of the re-sampled tree sequence file|
 |**-m**|conditionally required|per base pair per generation mutation rate|
-|**-map**|conditionally required|mutation rate map for the region|
+|**-g**|conditionally required|generation time in years. Required when `-tip_ages` is provided|
+|**-mutation_map**|conditionally required|mutation rate map for the region|
+|**-burn_in**|optional|the number of MCMC burn-in sweeps discarded before sampling. Default: 100|
 |**-num_samples**|optional|the number of posterior ARG samples. Default: 100|
-|**-thinning**|optional|the number of thinning iterations in MCMC. Default: 10|
-|**-scaling_rep**|optional|the number of rescaling steps after MCMC. Default: 5|
+|**-thin**|optional|the number of thinning iterations in MCMC. Default: 10|
+|**-scaling_rep**|optional|the number of rescaling steps after MCMC. Default: 3|
+|**-max_step**|optional|maximum proposal size for root node ages in coalescent units. Default: 10|
+|**-no_posterior_mean**|optional|if set, skip computing the posterior mean tree sequence. By default the posterior mean is computed from the sample log and written as the output tree sequence|
+|**-tip_ages**|conditionally required|file with one sample age (calendar years before present) per line, in node index order. Required for heterochronous (ancient DNA) data|
+|**-seed**|optional|random seed for the MCMC engine. Default: 42|
 
 If you want to use a mutation map, rather than a constant mutation rate along the genome, the mutation map file should be formatted as follows:
 
 ```
-0 1.2e-8
-100000 2e-8
-200000 1e-8
+0 100000 1.2e-8
+100000 200000 2e-8
+200000 300000 1e-8
 ```
 
-this means that the mutation rate between 0-100kb is 1.2e-8, and between 100-200kb is 2e-8. The coordinates must start from 0 and the last coordinate must be larger than (or equal to) the sequence length in the tree sequence file, so that mutation map is fully defined. 
+this means that the mutation rate between 0–100 kb is 1.2×10⁻⁸, and between 100–200 kb is 2×10⁻⁸. Each row specifies a genomic interval [start, end) and its per-bp per-generation mutation rate. The intervals must cover the full sequence without gaps, and the last end coordinate must be greater than or equal to the sequence length in the tree sequence file.
+
+# Heterochronous samples (ancient DNA)
+For data sets containing samples from different time points (e.g., ancient DNA mixed with present-day samples), provide the sampling ages and generation time:
+
+```
+polegon_master -m mutation_rate -input prefix -output prefix -tip_ages ages.txt -g 29
+```
+
+The tip ages file should contain one value per line (calendar years before present), in the same order as the sample nodes in the tree sequence.
 
 # Suggestions from the developers
+- The `-scaling_rep` parameter controls how many rounds of mutation-density recalibration are applied after MCMC. Setting it to 0 disables rescaling entirely.
+- If reproducibility is required, set `-seed` to a fixed integer.

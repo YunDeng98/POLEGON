@@ -24,23 +24,19 @@
 using namespace std;
 
 class Mutation_map {
-    
+
 public:
-    
+
     double sequence_length = INT_MAX;
     vector<double> coordinates = {};
-    vector<double> mutation_distances = {};
-    
+    vector<double> mutation_distances = {}; 
+
     Mutation_map();
-    
+
     void load_map(string mut_map_file);
-    
     int find_index(double x);
-    
     double mutation_distance(double x);
-    
-    double mutation_rate(double x, double y);
-    
+    double mutation_rate(double x, double y); // integrated rate over [x, y]
     double mean_rate();
 
 };

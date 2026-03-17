@@ -1,6 +1,6 @@
 //
 //  Distribution.cpp
-//  arg_branch_length
+//  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
 //
@@ -64,5 +64,3 @@ double Distribution::inverse_survival(double q) {
     double x = times[index - 1] + delta;
     return x;
 }
-
-
