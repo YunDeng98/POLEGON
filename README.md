@@ -54,5 +54,5 @@ polegon_master -m mutation_rate -input prefix -output prefix -tip_ages ages.txt 
 The tip ages file should contain one value per line (calendar years before present), in the same order as the sample nodes in the tree sequence.
 
 # Suggestions from the developers
-- The `-scaling_rep` parameter controls how many rounds of mutation-density recalibration are applied after MCMC. Setting it to 0 disables rescaling entirely.
+- The `-scaling_rep` parameter controls how many rounds of ARG rescaling are applied after MCMC. Setting it to 0 disables rescaling entirely.
 - If reproducibility is required, set `-seed` to a fixed integer.
