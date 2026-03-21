@@ -314,8 +314,7 @@ def main():
     parser.add_argument('-max_step', type=float, required=False, default=10,
                         help='Max root node proposal size in coalescent units (default: 10).')
     parser.add_argument('-tip_ages', type=str, required=False, default=None,
-                        help='Two-column file of sample ages: haplotype_name calendar_age_BP. '
-                             'One row per individual (matched by tip labels in input tree sequence file)')
+                        help='Two-column file of tip ages: tip_label calendar_age_BP. ')
     parser.add_argument('-g', type=float, required=False, default=None,
                         help='Generation time in years. Required when -tip_ages is provided.')
     parser.add_argument('-seed', type=int, required=False, default=42,
