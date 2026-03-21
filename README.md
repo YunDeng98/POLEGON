@@ -31,7 +31,7 @@ The following details to these arguments can be displayed if you simply type `po
 |**-scaling_rep**|optional|the number of rescaling steps after MCMC. Default: 3|
 |**-max_step**|optional|maximum proposal size for root node ages in coalescent units. Default: 10|
 |**-no_posterior_mean**|optional|if set, skip computing the posterior mean tree sequence. By default the posterior mean is computed from the sample log and written as the output tree sequence|
-|**-tip_ages**|conditionally required|file with one sample age (calendar years before present) per line, in node index order. Required for heterochronous (ancient DNA) data|
+|**-tip_ages**|conditionally required|two-column file of sample ages: `individual_name  calendar_age_BP`. One row per individual. Required for heterochronous (ancient DNA) data|
 |**-seed**|optional|random seed for the MCMC engine. Default: 42|
 
 If you want to use a mutation map, rather than a constant mutation rate along the genome, the mutation map file should be formatted as follows:
@@ -51,7 +51,13 @@ For data sets containing samples from different time points (e.g., ancient DNA m
 polegon_master -m mutation_rate -input prefix -output prefix -tip_ages ages.txt -g 29
 ```
 
-The tip ages file should contain one value per line (calendar years before present), in the same order as the sample nodes in the tree sequence.
+The tip ages file should have two columns: the individual name and its age in calendar years before present. One row per individual; both haplotypes of each individual are assigned that age. Individual names must match those stored in the tree sequence. Example:
+
+```
+Sample1    0
+Sample2    3500
+Sample3    8000
+```
 
 # Suggestions from the developers
 - The `-scaling_rep` parameter controls how many rounds of ARG rescaling are applied after MCMC. Setting it to 0 disables rescaling entirely.

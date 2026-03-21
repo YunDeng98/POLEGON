@@ -12,11 +12,66 @@ import subprocess
 import tskit
 
 
-def estimate_Ne(ts, m, tip_ages_file=None, gen_time=None):
+def tip_ages_to_ordered(tip_ages_file, ts):
+
+    rows = []
+    with open(tip_ages_file) as f:
+        for lineno, line in enumerate(f, 1):
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            parts = line.split()
+            if len(parts) < 2:
+                raise ValueError(
+                    f"tip_ages line {lineno}: expected 'name age', got: {line!r}"
+                )
+            try:
+                age = float(parts[1])
+            except ValueError:
+                raise ValueError(
+                    f"tip_ages line {lineno}: age must be a number, got: {parts[1]!r}"
+                )
+            rows.append((parts[0], age))
+
+    samples = list(ts.samples())
+
+    if ts.num_individuals > 0:
+        # Build name -> age map
+        age_map = {name: age for name, age in rows}
+        # Build node -> age via individual name
+        node_to_age = {}
+        for ind in ts.individuals():
+            meta = ind.metadata
+            if isinstance(meta, bytes):
+                name = meta.decode().strip()
+            elif isinstance(meta, str):
+                name = meta.strip()
+            else:
+                name = str(meta).strip()
+            if not name:
+                raise ValueError(
+                    f"Haplotype {ind.id} has no label in the tree sequence. "
+                )
+            if name not in age_map:
+                raise ValueError(
+                    f"Haplotype '{name}' (id {ind.id}) not found in tip_ages file."
+                )
+            age = age_map[name]
+            for nid in ind.nodes:
+                if ts.node(nid).is_sample:
+                    node_to_age[nid] = age
+        return [node_to_age[s] for s in samples]
+    else:
+        raise ValueError(
+            "The tree sequence has no tip labels. "
+            "Tip labels are required for tip age matching. "
+        )
+
+
+def estimate_Ne(ts, m, ages_ordered=None, gen_time=None):
     pi = ts.diversity(mode='site')
-    if tip_ages_file is not None:
-        tip_ages_years = np.loadtxt(tip_ages_file)
-        tip_ages_gen = tip_ages_years / gen_time
+    if ages_ordered is not None:
+        tip_ages_gen = np.array(ages_ordered) / gen_time
         n = len(tip_ages_gen)
         i_idx, j_idx = np.triu_indices(n, k=1)
         mean_abs_diff = np.mean(np.abs(tip_ages_gen[i_idx] - tip_ages_gen[j_idx]))
@@ -125,7 +180,6 @@ def read_ARG(node_file, edge_file):
 
 
 def read_mutation(tables, mutation_file):
-    """Load mutations from POLEGON format into a tskit TableCollection in place."""
     mutations = np.loadtxt(mutation_file)
     n = mutations.shape[0]
     mut_pos = -1
@@ -144,19 +198,35 @@ def read_mutation(tables, mutation_file):
 
 
 def read_mts(node_file, branch_file, mutation_file):
-    """Reconstruct a dated tree sequence from POLEGON output files."""
     tables = read_ARG(node_file, branch_file)
     read_mutation(tables, mutation_file)
     return tables.tree_sequence()
 
 
+def _run_polegon_binary(polegon_command, input_prefix, output_prefix):
+    print("Run polegon command: " + ' '.join(polegon_command))
+    result = subprocess.run(polegon_command, capture_output=True, text=True)
+    if result.returncode == 0:
+        print("polegon executed successfully")
+        new_ts = read_mts(
+            f"{input_prefix}_new_nodes.txt",
+            f"{input_prefix}_branches.txt",
+            f"{input_prefix}_muts.txt"
+        )
+        new_ts.dump(output_prefix + ".trees")
+    else:
+        print("polegon failed")
+        print(result.stderr)
+
+
 def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, input_prefix,
                           output_prefix, max_step, tip_ages_file, gen_time, seed):
-    """Run POLEGON with a constant mutation rate."""
+    import tempfile
     old_ts = tskit.load(input_prefix + ".trees")
     write_arg(old_ts, f"{input_prefix}_nodes.txt", f"{input_prefix}_branches.txt")
     write_muts(old_ts, f"{input_prefix}_muts.txt")
-    Ne = estimate_Ne(old_ts, m, tip_ages_file, gen_time)
+    ages_ordered = tip_ages_to_ordered(tip_ages_file, old_ts) if tip_ages_file is not None else None
+    Ne = estimate_Ne(old_ts, m, ages_ordered, gen_time)
     script_dir    = os.path.dirname(os.path.realpath(__file__))
     polegon_binary = os.path.join(script_dir, 'polegon')
     polegon_command = [
@@ -172,37 +242,28 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, input_pref
         "-max_step",    f"{max_step}",
         "-seed",        f"{seed}",
     ]
-    if tip_ages_file is not None:
-        polegon_command = polegon_command + ["-tip_ages", tip_ages_file, "-g", f"{gen_time}"]
-    print("Run polegon command: " + ' '.join(polegon_command))
-    result = subprocess.run(polegon_command, capture_output=True, text=True)
-    if result.returncode == 0:
-        print("polegon executed successfully")
-        new_ts = read_mts(
-            f"{input_prefix}_new_nodes.txt",
-            f"{input_prefix}_branches.txt",
-            f"{input_prefix}_muts.txt"
-        )
-        new_ts.dump(output_prefix + ".trees")
-    else:
-        print("polegon failed")
-    # Intermediate text files kept for inspection.
-    # Uncomment to clean up after a successful run:
-    #for f in [f"{input_prefix}_nodes.txt", f"{input_prefix}_branches.txt",
-    #          f"{input_prefix}_muts.txt", f"{input_prefix}_new_nodes.txt"]:
-    #    if os.path.exists(f): os.remove(f)
-    return
+    tmp_tip_ages = None
+    if ages_ordered is not None:
+        fd, tmp_tip_ages = tempfile.mkstemp(suffix="_tip_ages.txt")
+        with os.fdopen(fd, 'w') as f:
+            for age in ages_ordered:
+                f.write(f"{age}\n")
+        polegon_command += ["-tip_ages", tmp_tip_ages, "-g", f"{gen_time}"]
+    _run_polegon_binary(polegon_command, input_prefix, output_prefix)
+    if tmp_tip_ages and os.path.exists(tmp_tip_ages):
+        os.remove(tmp_tip_ages)
 
 
 def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep,
                          input_prefix, output_prefix, max_step, tip_ages_file,
                          gen_time, seed):
-    """Run POLEGON with a spatially varying mutation rate map."""
+    import tempfile
     old_ts = tskit.load(input_prefix + ".trees")
     write_arg(old_ts, f"{input_prefix}_nodes.txt", f"{input_prefix}_branches.txt")
     write_muts(old_ts, f"{input_prefix}_muts.txt")
     m  = average_mutation_rate(mutation_map)
-    Ne = estimate_Ne(old_ts, m, tip_ages_file, gen_time)
+    ages_ordered = tip_ages_to_ordered(tip_ages_file, old_ts) if tip_ages_file is not None else None
+    Ne = estimate_Ne(old_ts, m, ages_ordered, gen_time)
     script_dir    = os.path.dirname(os.path.realpath(__file__))
     polegon_binary = os.path.join(script_dir, 'polegon')
     polegon_command = [
@@ -218,25 +279,16 @@ def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep,
         "-max_step",     f"{max_step}",
         "-seed",         f"{seed}",
     ]
-    if tip_ages_file is not None:
-        polegon_command = polegon_command + ["-tip_ages", tip_ages_file, "-g", f"{gen_time}"]
-    print("Run polegon command: " + ' '.join(polegon_command))
-    result = subprocess.run(polegon_command, capture_output=True, text=True)
-    if result.returncode == 0:
-        print("polegon executed successfully")
-        new_ts = read_mts(
-            f"{input_prefix}_new_nodes.txt",
-            f"{input_prefix}_branches.txt",
-            f"{input_prefix}_muts.txt"
-        )
-        new_ts.dump(output_prefix + ".trees")
-    else:
-        print("polegon failed")
-    for f in [f"{input_prefix}_nodes.txt", f"{input_prefix}_branches.txt",
-              f"{input_prefix}_muts.txt", f"{input_prefix}_new_nodes.txt"]:
-        if os.path.exists(f):
-            os.remove(f)
-    return
+    tmp_tip_ages = None
+    if ages_ordered is not None:
+        fd, tmp_tip_ages = tempfile.mkstemp(suffix="_tip_ages.txt")
+        with os.fdopen(fd, 'w') as f:
+            for age in ages_ordered:
+                f.write(f"{age}\n")
+        polegon_command += ["-tip_ages", tmp_tip_ages, "-g", f"{gen_time}"]
+    _run_polegon_binary(polegon_command, input_prefix, output_prefix)
+    if tmp_tip_ages and os.path.exists(tmp_tip_ages):
+        os.remove(tmp_tip_ages)
 
 
 def main():
@@ -262,7 +314,9 @@ def main():
     parser.add_argument('-max_step', type=float, required=False, default=10,
                         help='Max root node proposal size in coalescent units (default: 10).')
     parser.add_argument('-tip_ages', type=str, required=False, default=None,
-                        help='Sample ages in calendar years before present, one per line in node index order.')
+                        help='Two-column file of sample ages: haplotype_name calendar_age_BP. '
+                             'One row per individual (matched by name if the tree sequence has named '
+                             'individuals) or per sample node (positional if no individuals present).')
     parser.add_argument('-g', type=float, required=False, default=None,
                         help='Generation time in years. Required when -tip_ages is provided.')
     parser.add_argument('-seed', type=int, required=False, default=42,
