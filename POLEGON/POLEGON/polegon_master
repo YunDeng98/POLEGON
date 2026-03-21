@@ -200,6 +200,8 @@ def read_mutation(tables, mutation_file):
 def read_mts(node_file, branch_file, mutation_file):
     tables = read_ARG(node_file, branch_file)
     read_mutation(tables, mutation_file)
+    tables.build_index()
+    tables.compute_mutation_parents()
     return tables.tree_sequence()
 
 
