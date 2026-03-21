@@ -205,7 +205,7 @@ def read_mts(node_file, branch_file, mutation_file):
 
 def _run_polegon_binary(polegon_command, input_prefix, output_prefix):
     print("Run polegon command: " + ' '.join(polegon_command))
-    result = subprocess.run(polegon_command, capture_output=True, text=True)
+    result = subprocess.run(polegon_command)
     if result.returncode == 0:
         print("polegon executed successfully")
         new_ts = read_mts(
@@ -216,7 +216,6 @@ def _run_polegon_binary(polegon_command, input_prefix, output_prefix):
         new_ts.dump(output_prefix + ".trees")
     else:
         print("polegon failed")
-        print(result.stderr)
 
 
 def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, input_prefix,
