@@ -46,7 +46,7 @@ If you want to use a mutation map, rather than a constant mutation rate along th
 this means that the mutation rate between 0–100 kb is 1.2×10⁻⁸, and between 100–200 kb is 2×10⁻⁸. Each row specifies a genomic interval [start, end) and its per-bp per-generation mutation rate. The intervals must cover the full sequence without gaps, and the last end coordinate must be greater than or equal to the sequence length in the tree sequence file.
 
 # Heterochronous samples (ancient DNA)
-For data sets containing samples from different time points (e.g., ancient DNA mixed with present-day samples), provide the sampling ages and generation time:
+For data sets containing samples from different time points (e.g., ancient DNA), provide the sampling ages and generation time:
 
 ```
 polegon_master -m mutation_rate -input input.trees -output output_prefix -tip_ages ages.txt -g 29
