@@ -3,7 +3,7 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
-//  Updated by Wonseop Lim on 03/16/26.
+//  Updated by Wonseop Lim on 03/21/26.
 //
 
 #ifndef DAG_hpp
@@ -24,6 +24,7 @@ class DAG {
 public:
 
     int num_leaf_nodes = 0;
+    int num_cores = 1;
     double Ne = 1;
     double lambda = 5;      // scale of the exponential proposal for root node times
     double time_origin = 0; // age of youngest tip in coalescent units
@@ -45,6 +46,15 @@ public:
     vector<int> child_start = {};
 
     vector<int> perm_cache = {};
+    vector<vector<int>> color_classes = {};
+
+    vector<double> node_times = {};
+    vector<int>    parent_upper_idx = {};
+    vector<double> parent_mut_count = {};
+    vector<double> parent_mut_rate  = {};
+    vector<int>    child_lower_idx  = {};
+    vector<double> child_mut_count  = {};
+    vector<double> child_mut_rate   = {};
 
     int updates = 0;
     double max_step = 10.0; // maximum exponential draw for root node proposals
@@ -56,6 +66,7 @@ public:
     void map_mutations(string mut_file);
     void compute_mutation_rates(double theta);
     void apply_tip_ages(string tip_ages_file, double gen_time);
+    void compute_coloring();
     void no_prior_MCMC();
     void posterior_average(string samples_file, string output_file);
     void write_node_ages(string filename, double gen_time = 1);

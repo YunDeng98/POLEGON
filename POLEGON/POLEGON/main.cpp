@@ -3,10 +3,11 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 12/13/23.
-//  Updated by Wonseop Lim on 03/16/26.
+//  Updated by Wonseop Lim on 03/21/26.
 //
 
 #include <iostream>
+#include <omp.h>
 #include "DAG.hpp"
 #include "Distribution.hpp"
 #include "Scaler.hpp"
@@ -15,12 +16,13 @@
 
 int main(int argc, const char * argv[]) {
     double m = -1;              // mutation rate per generation per bp
-    double g = 1;               // generation time in years; default 1 (i.e., output in generations)
+    double g = -1;              // generation time in years; -1 = not set (defaults to 1 if unused)
     int num_samples = -1;       // number of posterior MCMC samples
     int burn_in = -1;           // number of burn-in samples
     int spacing = -1;           // thinning interval
     int scaling_rep = 0;        // number of ARG rescaling rounds
     double max_step = 10.0;     // maximum exponential draw for root node proposals
+    int num_cores = 1;
     string input_prefix = "", output_prefix = "";
     int seed = 42;              // random seed
     double Ne = 0;              // effective population size
@@ -136,6 +138,15 @@ int main(int argc, const char * argv[]) {
                 cerr << "Error: -g flag expects a number. " << endl; exit(1);
             }
         }
+        else if (arg == "-cores") {
+            if (i + 1 >= argc || argv[i+1][0] == '-') {
+                cerr << "Error: -cores flag cannot be empty." << endl; exit(1);
+            }
+            try { num_cores = stoi(argv[++i]); }
+            catch (const invalid_argument&) {
+                cerr << "Error: -cores flag expects a number." << endl; exit(1);
+            }
+        }
         else if (arg == "-max_step") {
             if (i + 1 >= argc || argv[i+1][0] == '-') {
                 cerr << "Error: -max_step flag cannot be empty. " << endl; exit(1);
@@ -150,19 +161,19 @@ int main(int argc, const char * argv[]) {
         }
     }
 
-    seed_random_engine(seed);
-
-    if (!tip_ages_file.empty() && g == 1) {
+    if (!tip_ages_file.empty() && g == -1) {
         cerr << "Error: -g (generation time in years) must be provided when using -tip_ages." << endl;
         exit(1);
     }
-    if (g <= 0) {
+    if (g != -1 && g <= 0) {
         cerr << "Error: -g must be positive." << endl;
         exit(1);
     }
+    if (g == -1) g = 1;
 
     DAG dag = DAG(Ne);
     dag.max_step = max_step;
+    dag.num_cores = num_cores;
     string node_file   = input_prefix + "_nodes.txt";
     string branch_file = input_prefix + "_branches.txt";
     string mut_file    = input_prefix + "_muts.txt";
@@ -195,6 +206,12 @@ int main(int argc, const char * argv[]) {
     if (!write_samples && !posterior_mean) {
         cerr << "Error: nothing to output. Enable -write_samples or keep -no_posterior_mean unset." << endl;
         exit(1);
+    }
+
+    dag.compute_coloring();
+    #pragma omp parallel num_threads(num_cores)
+    {
+        seed_random_engine(seed, omp_get_thread_num());
     }
 
     // Burn-in
@@ -236,8 +253,10 @@ int main(int argc, const char * argv[]) {
                 for (Node *n : dag.nodes)
                     samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
                                  << (n->time + dag.time_origin) * Ne * g << " ";
-                for (int j = 0; j < (int)dag.nodes.size(); j++)
+                for (int j = 0; j < (int)dag.nodes.size(); j++) {
                     dag.nodes[j]->time = raw_times[j];
+                    dag.node_times[j]  = raw_times[j];
+                }
             } else {
                 // No ARG rescaling
                 for (Node *n : dag.nodes)

@@ -3,10 +3,12 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
-//  Updated by Wonseop Lim on 03/16/26.
+//  Updated by Wonseop Lim on 03/21/26.
 //
 
 #include <sstream>
+#include <queue>
+#include <omp.h>
 #include "DAG.hpp"
 
 DAG::DAG(double n) {
@@ -79,11 +81,13 @@ void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
     time_origin = min_age;
     for (int i = 0; i < (int)nodes.size(); i++) {
         nodes[i]->time -= min_age;
+        node_times[i] = nodes[i]->time;
     }
     int s = 0;
     for (int i = 0; i < (int)nodes.size(); i++) {
         if (nodes[i]->is_sample) {
             nodes[i]->time = tip_ages_coal[s++] - min_age;
+            node_times[i] = nodes[i]->time;
         }
     }
     for (int i = 0; i < (int)nodes.size(); i++) {
@@ -91,14 +95,101 @@ void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
             double lb = lower_bound(i);
             if (nodes[i]->time <= lb) {
                 nodes[i]->time = lb + 1e-6;
+                node_times[i] = nodes[i]->time;
             }
         }
     }
 }
 
+// Chromatic decomposition of DAG for parallel MCMC proposals.
+// Uses Kahn's topological sort (parents before children) so that when each
+// node is colored, only its direct parents are already colored (1-2 constraints),
+// guaranteeing 2-3 color classes on any ARG regardless of node index ordering.
+void DAG::compute_coloring() {
+    int n = (int)nodes.size();
+
+    // in_degree[i] = number of parent branches of internal node i
+    vector<int> in_degree(n, 0);
+    for (int i : perm_cache)
+        in_degree[i] = parent_start[i+1] - parent_start[i];
+
+    // Kahn's algorithm: start from roots (no parents), work down to leaves
+    queue<int> q;
+    for (int i : perm_cache)
+        if (in_degree[i] == 0) q.push(i);
+
+    vector<int> topo_order;
+    topo_order.reserve(perm_cache.size());
+    while (!q.empty()) {
+        int i = q.front(); q.pop();
+        topo_order.push_back(i);
+        for (int k = child_start[i]; k < child_start[i+1]; k++) {
+            int j = child_data[k]->lower_node->index;
+            if (!nodes[j]->is_sample && --in_degree[j] == 0)
+                q.push(j);
+        }
+    }
+
+    // Greedy coloring: parents are always colored before children,
+    // so each node avoids at most max_parents (1-2) colors
+    vector<int> node_color(n, -1);
+    for (int i : topo_order) {
+        vector<bool> used;
+        for (int k = parent_start[i]; k < parent_start[i+1]; k++) {
+            int c = node_color[parent_data[k]->upper_node->index];
+            if (c >= 0) {
+                if ((int)used.size() <= c) used.resize(c + 1, false);
+                used[c] = true;
+            }
+        }
+        int color = 0;
+        while (color < (int)used.size() && used[color]) color++;
+        node_color[i] = color;
+    }
+
+    int num_colors = 0;
+    for (int i : topo_order) num_colors = max(num_colors, node_color[i] + 1);
+    color_classes.assign(num_colors, {});
+    for (int i : topo_order) color_classes[node_color[i]].push_back(i);
+    cout << "Chromatic decomposition: " << num_colors << " color classes" << endl;
+    for (int c = 0; c < num_colors; c++)
+        cout << "  Class " << c + 1 << ": " << color_classes[c].size() << " nodes" << endl;
+
+    int pe = parent_start.back();
+    parent_upper_idx.resize(pe);
+    parent_mut_count.resize(pe);
+    parent_mut_rate.resize(pe);
+    for (int i = 0; i < n; i++) {
+        for (int k = parent_start[i]; k < parent_start[i+1]; k++) {
+            Branch *b = parent_data[k];
+            parent_upper_idx[k] = b->upper_node->index;
+            parent_mut_count[k] = b->mutation_count;
+            parent_mut_rate[k]  = b->mutation_rate;
+        }
+    }
+    int ce = child_start.back();
+    child_lower_idx.resize(ce);
+    child_mut_count.resize(ce);
+    child_mut_rate.resize(ce);
+    for (int i = 0; i < n; i++) {
+        for (int k = child_start[i]; k < child_start[i+1]; k++) {
+            Branch *b = child_data[k];
+            child_lower_idx[k] = b->lower_node->index;
+            child_mut_count[k] = b->mutation_count;
+            child_mut_rate[k]  = b->mutation_rate;
+        }
+    }
+}
+
 void DAG::no_prior_MCMC() {
-    for (int index : perm_cache) {
-        no_prior_propose(index);
+    #pragma omp parallel num_threads(num_cores)
+    {
+        for (const auto& class_nodes : color_classes) {
+            #pragma omp for schedule(static)
+            for (int k = 0; k < (int)class_nodes.size(); k++) {
+                no_prior_propose(class_nodes[k]);
+            }
+        }
     }
 }
 
@@ -144,23 +235,27 @@ void DAG::write_node_ages(string filename, double gen_time) {
 }
 
 double DAG::lower_bound(int i) {
-    if (child_start[i] == child_start[i+1]) {
-        return nodes[i]->time;
-    }
+    if (child_start[i] == child_start[i+1]) return node_times[i];
     double lb = 0;
-    for (int k = child_start[i]; k < child_start[i+1]; k++) {
-        lb = max(child_data[k]->lower_node->time, lb);
+    if (!child_lower_idx.empty()) {
+        for (int k = child_start[i]; k < child_start[i+1]; k++)
+            lb = max(node_times[child_lower_idx[k]], lb);
+    } else {
+        for (int k = child_start[i]; k < child_start[i+1]; k++)
+            lb = max(node_times[child_data[k]->lower_node->index], lb);
     }
     return lb;
 }
 
 double DAG::upper_bound(int i) {
-    if (parent_start[i] == parent_start[i+1]) {
-        return INT_MAX;
-    }
+    if (parent_start[i] == parent_start[i+1]) return INT_MAX;
     double ub = INT_MAX;
-    for (int k = parent_start[i]; k < parent_start[i+1]; k++) {
-        ub = min(parent_data[k]->upper_node->time, ub);
+    if (!parent_upper_idx.empty()) {
+        for (int k = parent_start[i]; k < parent_start[i+1]; k++)
+            ub = min(node_times[parent_upper_idx[k]], ub);
+    } else {
+        for (int k = parent_start[i]; k < parent_start[i+1]; k++)
+            ub = min(node_times[parent_data[k]->upper_node->index], ub);
     }
     return ub;
 }
@@ -200,32 +295,26 @@ double DAG::log_acceptance_weight(int i, double t) {
 
 // Computes exp(w(t1) - w(t0)) over incident branches
 double DAG::fast_acceptance_ratio(int i, double t0, double t1) {
-    double w0 = 0;
-    double w1 = 0;
-    double length_0 = 0, length_1 = 0, count = 0, rate_0 = 0, rate_1 = 0;
+    double w0 = 0, w1 = 0;
     for (int k = parent_start[i]; k < parent_start[i+1]; k++) {
-        Branch *b = parent_data[k];
-        length_0 = b->upper_node->time - t0;
-        length_1 = b->upper_node->time - t1;
-        count = b->mutation_count;
-        rate_0 = length_0*b->mutation_rate;
-        rate_1 = length_1*b->mutation_rate;
+        double upper_t  = node_times[parent_upper_idx[k]];
+        double count    = parent_mut_count[k];
+        double mut_rate = parent_mut_rate[k];
+        double rate_0   = (upper_t - t0) * mut_rate;
+        double rate_1   = (upper_t - t1) * mut_rate;
         if (rate_0 > 0) { w0 += count*log(rate_0); w0 -= rate_0; } else { w0 = 0; }
         if (rate_1 > 0) { w1 += count*log(rate_1); w1 -= rate_1; } else { w1 = 0; }
-        assert(!isnan(w0));
-        assert(!isnan(w1));
+        assert(!isnan(w0)); assert(!isnan(w1));
     }
     for (int k = child_start[i]; k < child_start[i+1]; k++) {
-        Branch *b = child_data[k];
-        length_0 = t0 - b->lower_node->time;
-        length_1 = t1 - b->lower_node->time;
-        count = b->mutation_count;
-        rate_0 = length_0*b->mutation_rate;
-        rate_1 = length_1*b->mutation_rate;
+        double lower_t  = node_times[child_lower_idx[k]];
+        double count    = child_mut_count[k];
+        double mut_rate = child_mut_rate[k];
+        double rate_0   = (t0 - lower_t) * mut_rate;
+        double rate_1   = (t1 - lower_t) * mut_rate;
         if (rate_0 > 0) { w0 += count*log(rate_0); w0 -= rate_0; } else { w0 = 0; }
         if (rate_1 > 0) { w1 += count*log(rate_1); w1 -= rate_1; } else { w1 = 0; }
-        assert(!isnan(w0));
-        assert(!isnan(w1));
+        assert(!isnan(w0)); assert(!isnan(w1));
     }
     return exp(w1 - w0);
 }
@@ -240,7 +329,7 @@ double DAG::acceptance_ratio(int i, double t) {
 
 // For root nodes multiply by exp((t - t0)/lambda) (Hastings correction)
 double DAG::no_prior_acceptance_ratio(int i, double t, double lb, double ub) {
-    double t0 = nodes[i]->time;
+    double t0 = node_times[i];
     double q = fast_acceptance_ratio(i, t0, t);
     if (ub == INT_MAX) {
         q *= exp((t - t0)/lambda);
@@ -264,7 +353,7 @@ void DAG::propose(int i, Distribution *d) {
 void DAG::no_prior_propose(int i) {
     double lb = lower_bound(i);
     double ub = upper_bound(i);
-    double t0 = nodes[i]->time;
+    double t0 = node_times[i];
     double t = 0;
     if (ub != INT_MAX) {
         t = random_non_root_time(t0, lb, ub);
@@ -274,8 +363,8 @@ void DAG::no_prior_propose(int i) {
     double ar = no_prior_acceptance_ratio(i, t, lb, ub);
     double q = uniform_random();
     if (q < ar) {
+        node_times[i] = t;
         nodes[i]->time = t;
-        updates += 1;
     }
 }
 
@@ -294,10 +383,10 @@ void DAG::load_nodes(string node_file) {
         exit(1);
     }
     int count = 0;
-    double x;
-    while (fin >> x) {
+    double x, sf;
+    while (fin >> x >> sf) {
         Node *n = new Node(x/Ne, count);
-        if (x == 0) {
+        if (sf > 0.5) {
             n->is_sample = true;
             num_leaf_nodes += 1;
         }
@@ -306,6 +395,8 @@ void DAG::load_nodes(string node_file) {
         count += 1;
     }
     scaling_factors.resize(nodes.size());
+    node_times.resize(nodes.size());
+    for (int i = 0; i < (int)nodes.size(); i++) node_times[i] = nodes[i]->time;
     int n_internal = (int)nodes.size() - num_leaf_nodes;
     perm_cache.resize(n_internal);
     for (int i = 0; i < n_internal; i++) {

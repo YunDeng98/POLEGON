@@ -3,6 +3,7 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
+//  Updated by Wonseop Lim on 03/21/26.
 //
 
 #ifndef random_utils_hpp
@@ -15,10 +16,7 @@
 #include <fstream>
 #include <sstream>
 
-extern std::mt19937 random_engine;
-extern std::uniform_real_distribution<> uniform_distribution;
-
-void seed_random_engine(int seed);
+void seed_random_engine(int seed, int tid = 0);
 double uniform_random(); // redraws once if result is within 1e-5 of 0 or 1
 
 #endif /* random_utils_hpp */

@@ -33,6 +33,7 @@ The following details to these arguments can be displayed if you simply type `po
 |**-no_posterior_mean**|optional|if set, skip computing the posterior mean tree sequence. By default the posterior mean is computed from the sample log and written as the output tree sequence|
 |**-tip_ages**|conditionally required|two-column file of sample ages: `tip_label  calendar_age_BP`. One row per individual. Required for heterochronous (ancient DNA) data|
 |**-seed**|optional|random seed for the MCMC engine. Default: 42|
+|**-cores**|optional|number of CPU cores for parallel MCMC. Default: 1|
 
 If you want to use a mutation map, rather than a constant mutation rate along the genome, the mutation map file should be formatted as follows:
 

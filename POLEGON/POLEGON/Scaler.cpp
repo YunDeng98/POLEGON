@@ -200,6 +200,9 @@ void Scaler::rescale(DAG &dag, double theta) {
         }
     }
 
+    for (int i = 0; i < (int)dag.node_times.size(); i++)
+        dag.node_times[i] = dag.nodes[i]->time;
+
     // Forward topological pass: correct any internal node whose rescaled time
     // now falls at or below its oldest child
     for (int i = 0; i < (int)dag.nodes.size(); i++) {
@@ -207,6 +210,7 @@ void Scaler::rescale(DAG &dag, double theta) {
             double lb = dag.lower_bound(i);
             if (dag.nodes[i]->time <= lb) {
                 dag.nodes[i]->time = lb + 1e-6;
+                dag.node_times[i] = dag.nodes[i]->time;
             }
         }
     }

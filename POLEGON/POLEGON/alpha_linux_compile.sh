@@ -17,10 +17,10 @@ VERSION_DIR="$RELEASE_DIR/polegon-$VERSION-alpha-linux-x86_64"
 mkdir -p $VERSION_DIR
 
 # Compile the program with optimizations and debugging information
-g++ -std=c++17 -O3 -g -static *.cpp -o $VERSION_DIR/polegon
+g++ -std=c++17 -O3 -g -static -fopenmp *.cpp -o $VERSION_DIR/polegon
 
 # Compile the debug version of the program
-g++ -std=c++17 -g -static *.cpp -o $VERSION_DIR/polegon_debug
+g++ -std=c++17 -g -static -fopenmp *.cpp -o $VERSION_DIR/polegon_debug
 
 # Copy additional files
 cp $VERSION_DIR/polegon polegon
