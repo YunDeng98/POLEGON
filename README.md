@@ -13,15 +13,15 @@ Fixated on the topology, POLEGON can generate you the posterior samples of the A
 The basic commands is:
 
 ```
-polegon_master -m mutation_rate -input original_tree_sequence -output updated_tree_sequence -num_samples N -thin K -scaling_rep L
+polegon_master -m mutation_rate -input input.trees -output output_prefix -num_samples N -thin K -scaling_rep L
 ```
 
 The following details to these arguments can be displayed if you simply type `polegon_master`
 
 |flag|required?|details|
 |-------------------|-----|---|
-|**-input**|required|the prefix of the tree sequence file|
-|**-output**|required|the prefix of the re-sampled tree sequence file|
+|**-input**|required|input tree sequence file (e.g. `path/to/input.trees`)|
+|**-output**|required|output file prefix|
 |**-m**|conditionally required|per base pair per generation mutation rate|
 |**-g**|conditionally required|generation time in years. Required when `-tip_ages` is provided|
 |**-mutation_map**|conditionally required|mutation rate map for the region|
@@ -32,7 +32,7 @@ The following details to these arguments can be displayed if you simply type `po
 |**-max_step**|optional|maximum proposal size for root node ages in coalescent units. Default: 10|
 |**-no_posterior_mean**|optional|if set, skip computing the posterior mean tree sequence. By default the posterior mean is computed from the sample log and written as the output tree sequence|
 |**-tip_ages**|conditionally required|two-column file of sample ages: `tip_label  calendar_age_BP`. One row per individual. Required for heterochronous (ancient DNA) data|
-|**-seed**|optional|random seed for the MCMC engine. Default: 42|
+|**-seed**|optional|random seed for the MCMC. Default: 42|
 |**-cores**|optional|number of CPU cores for parallel MCMC. Default: 1|
 
 If you want to use a mutation map, rather than a constant mutation rate along the genome, the mutation map file should be formatted as follows:
@@ -49,7 +49,7 @@ this means that the mutation rate between 0–100 kb is 1.2×10⁻⁸, and betwe
 For data sets containing samples from different time points (e.g., ancient DNA mixed with present-day samples), provide the sampling ages and generation time:
 
 ```
-polegon_master -m mutation_rate -input prefix -output prefix -tip_ages ages.txt -g 29
+polegon_master -m mutation_rate -input input.trees -output output_prefix -tip_ages ages.txt -g 29
 ```
 
 The tip ages file should have two columns: the tip label and its age in calendar years before present. One row per individual; both haplotypes of each individual are assigned that age. Tip labels must match those stored in the tree sequence. Example:

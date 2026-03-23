@@ -83,15 +83,14 @@ def estimate_Ne(ts, m, ages_ordered=None, gen_time=None):
         n = len(tip_ages_gen)
         i_idx, j_idx = np.triu_indices(n, k=1)
         mean_abs_diff = np.mean(np.abs(tip_ages_gen[i_idx] - tip_ages_gen[j_idx]))
-        Ne = pi / (2 * m) - mean_abs_diff / 2
-        if Ne <= 0:
-            raise ValueError(
-                f"Heterochronous Ne yielded non-positive Ne ({Ne:.1f}). "
-                "Check that tip ages and mutation rate are in consistent units."
-            )
-        print(f"Estimated Ne for heterochronous sampling: {Ne:.1f}")
     else:
-        Ne = pi / (2 * m)
+        mean_abs_diff = 0.0
+    Ne = pi / (2 * m) - mean_abs_diff / 2
+    if Ne <= 0:
+        raise ValueError(
+            f"Estimated Ne is non-positive ({Ne:.1f}). "
+            "Check that tip ages and mutation rate are in consistent units."
+        )
     print(f"Estimated Ne: {Ne:.1f}")
     return Ne
 
@@ -229,10 +228,11 @@ def _run_polegon_binary(polegon_command, input_prefix, output_prefix):
         print("POLEGON failed")
 
 
-def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, input_prefix,
+def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, input_file,
                           output_prefix, max_step, tip_ages_file, gen_time, seed, cores):
     import tempfile
-    old_ts = tskit.load(input_prefix + ".trees")
+    input_prefix = os.path.splitext(input_file)[0]
+    old_ts = tskit.load(input_file)
     write_arg(old_ts, f"{input_prefix}_nodes.txt", f"{input_prefix}_branches.txt")
     write_muts(old_ts, f"{input_prefix}_muts.txt")
     if tip_ages_file is not None:
@@ -240,7 +240,7 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, input_pref
     else:
         ages_ordered = extract_tip_ages_from_ts(old_ts)
         if ages_ordered is not None and gen_time is None:
-            gen_time = 1
+            sys.exit("Error: -g (generation time) is required when the input tree sequence has heterochronous tip ages.")
     Ne = estimate_Ne(old_ts, m, ages_ordered, gen_time)
     script_dir    = os.path.dirname(os.path.realpath(__file__))
     polegon_binary = os.path.join(script_dir, 'polegon')
@@ -271,10 +271,11 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, input_pref
 
 
 def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep,
-                         input_prefix, output_prefix, max_step, tip_ages_file,
+                         input_file, output_prefix, max_step, tip_ages_file,
                          gen_time, seed, cores):
     import tempfile
-    old_ts = tskit.load(input_prefix + ".trees")
+    input_prefix = os.path.splitext(input_file)[0]
+    old_ts = tskit.load(input_file)
     write_arg(old_ts, f"{input_prefix}_nodes.txt", f"{input_prefix}_branches.txt")
     write_muts(old_ts, f"{input_prefix}_muts.txt")
     m  = average_mutation_rate(mutation_map)
@@ -283,7 +284,7 @@ def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep,
     else:
         ages_ordered = extract_tip_ages_from_ts(old_ts)
         if ages_ordered is not None and gen_time is None:
-            gen_time = 1
+            sys.exit("Error: -g (generation time) is required when the input tree sequence has heterochronous tip ages.")
     Ne = estimate_Ne(old_ts, m, ages_ordered, gen_time)
     script_dir    = os.path.dirname(os.path.realpath(__file__))
     polegon_binary = os.path.join(script_dir, 'polegon')
@@ -330,7 +331,7 @@ def main():
     parser.add_argument('-thin', type=int, required=False, default=10,
                         help='Thinning interval between recorded samples (default: 10).')
     parser.add_argument('-input', type=str, required=True,
-                        help='Prefix of the input .trees file.')
+                        help='Input tree sequence file (e.g. path/to/input.trees).')
     parser.add_argument('-output', type=str, required=True,
                         help='Prefix for the output .trees file.')
     parser.add_argument('-max_step', type=float, required=False, default=10,
