@@ -54,7 +54,7 @@ void DAG::compute_mutation_rates(double theta) {
     }
 }
 
-// Adjusts ARG for heterochronous samples:
+// Adjusts ARG for heterochronous samples
 //   Convert times in coalescent units and shift all node times so the youngest tip is at t=0
 //   store the shift in time_origin and correct any internal node whose time falls at or below 
 //   its oldest child to lb + 1e-6
@@ -101,19 +101,15 @@ void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
     }
 }
 
-// Chromatic decomposition of DAG for parallel MCMC proposals.
-// Uses Kahn's topological sort (parents before children) so that when each
-// node is colored, only its direct parents are already colored (1-2 constraints),
-// guaranteeing 2-3 color classes on any ARG regardless of node index ordering.
+// Chromatic decomposition of DAG
+// Uses Kahn's topological sort
 void DAG::compute_coloring() {
     int n = (int)nodes.size();
 
-    // in_degree[i] = number of parent branches of internal node i
     vector<int> in_degree(n, 0);
     for (int i : perm_cache)
         in_degree[i] = parent_start[i+1] - parent_start[i];
 
-    // Kahn's algorithm: start from roots (no parents), work down to leaves
     queue<int> q;
     for (int i : perm_cache)
         if (in_degree[i] == 0) q.push(i);
@@ -130,8 +126,7 @@ void DAG::compute_coloring() {
         }
     }
 
-    // Greedy coloring: parents are always colored before children,
-    // so each node avoids at most max_parents (1-2) colors
+    // Greedy coloring
     vector<int> node_color(n, -1);
     for (int i : topo_order) {
         vector<bool> used;

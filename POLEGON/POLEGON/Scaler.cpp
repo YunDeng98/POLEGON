@@ -10,7 +10,6 @@
 
 Scaler::Scaler() {}
 
-// Computes node_deltas: net change in total ARG span at each node's time
 void Scaler::compute_deltas(DAG &dag) {
     sorted_nodes.resize(dag.nodes.size());
     copy(dag.nodes.begin(), dag.nodes.end(), sorted_nodes.begin());
@@ -46,9 +45,6 @@ void Scaler::compute_deltas(DAG &dag) {
      */
 }
 
-// Integrates the piecewise-constant ARG rate over time
-// rates[i] = cumulative ARG span at sorted_nodes[i]->time (partial_sum of node_deltas)
-// accumulated_arg_length[i] = integral of rates from t=0 to sorted_nodes[i]->time
 void Scaler::compute_accumulated_arg_length() {
     rates.resize(sorted_nodes.size());
     accumulated_arg_length.resize(sorted_nodes.size());
@@ -124,12 +120,9 @@ void Scaler::compute_old_grid() {
     assert((int)old_grid.size() == num_windows + 1);
 }
 
-// Derives per-window scaling factors and the new time grid
-// scaling_factor[k] = observed_arg_length[k] / expected_arg_length[k]
-// new_grid is accumulated as: new_width[k] = old_width[k] * scaling_factor[k]
 void Scaler::compute_new_grid(double theta) {
     for (auto &x : observed_arg_length) {
-        x /= theta; // convert mutation counts to ARG length units
+        x /= theta;
     }
     double base_time = 0;
     double old_window_width = 0, scaling_factor = 0;
@@ -144,8 +137,6 @@ void Scaler::compute_new_grid(double theta) {
     }
 }
 
-// Distributes observed mutations from all branches into windows
-// proportionally to each branch's overlap with each window
 void Scaler::map_mutations(DAG &dag) {
     observed_arg_length.resize(num_windows);
     for (Branch *b : dag.branches) {
@@ -153,8 +144,6 @@ void Scaler::map_mutations(DAG &dag) {
     }
 }
 
-// Adds w mutations from a branch spanning [lb, ub] to windows in proportion
-// to their overlap with [lb, ub]. Zero-length branches are treated as point masses
 void Scaler::add_mutation(double w, double lb, double ub) {
     double x, y, l, p;
     int index;
@@ -203,8 +192,6 @@ void Scaler::rescale(DAG &dag, double theta) {
     for (int i = 0; i < (int)dag.node_times.size(); i++)
         dag.node_times[i] = dag.nodes[i]->time;
 
-    // Forward topological pass: correct any internal node whose rescaled time
-    // now falls at or below its oldest child
     for (int i = 0; i < (int)dag.nodes.size(); i++) {
         if (!dag.nodes[i]->is_sample) {
             double lb = dag.lower_bound(i);

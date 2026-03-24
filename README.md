@@ -31,7 +31,7 @@ The following details to these arguments can be displayed if you simply type `po
 |**-scaling_rep**|optional|the number of rescaling steps after MCMC. Default: 3|
 |**-max_step**|optional|maximum proposal size for root node ages in coalescent units. Default: 10|
 |**-no_posterior_mean**|optional|if set, skip computing the posterior mean tree sequence. By default the posterior mean is computed from the sample log and written as the output tree sequence|
-|**-tip_ages**|conditionally required|two-column file of sample ages: `tip_label  calendar_age_BP`. One row per individual. Required for heterochronous (ancient DNA) data|
+|**-tip_ages**|conditionally required|two-column file of sample ages: `tip_label  calendar_age_BP`. One row per individual. Required for heterochronous (ancient DNA) data. Tip ages supplied via this flag are prioritized, even when the input ARG already contains tip age information.|
 |**-seed**|optional|random seed for the MCMC. Default: 42|
 |**-cores**|optional|number of CPU cores for parallel MCMC. Default: 1|
 
