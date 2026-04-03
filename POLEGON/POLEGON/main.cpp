@@ -3,7 +3,7 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 12/13/23.
-//  Updated by Wonseop Lim on 03/21/26.
+//  Modified by Wonseop Lim on 04/03/26.
 //
 
 #include <iostream>
@@ -21,6 +21,7 @@ int main(int argc, const char * argv[]) {
     int burn_in = -1;           // number of burn-in samples
     int spacing = -1;           // thinning interval
     int scaling_rep = 0;        // number of ARG rescaling rounds
+    int scaling_bin = 100;      // number of time bins used by the Scaler
     double max_step = 10.0;     // maximum exponential draw for root node proposals
     int num_cores = 1;
     string input_prefix = "", output_prefix = "";
@@ -28,7 +29,6 @@ int main(int argc, const char * argv[]) {
     double Ne = 0;              // effective population size
     string map_file = "";       // path to mutation map
     string tip_ages_file = "";  // path to sample ages
-    bool write_samples = true;    // whether to write per-sample node times to file
     bool posterior_mean = true;   // whether to compute and write the posterior mean
 
     for (int i = 1; i < argc; ++i) {
@@ -87,6 +87,15 @@ int main(int argc, const char * argv[]) {
                 cerr << "Error: -scaling_rep flag expects a number. " << endl; exit(1);
             }
         }
+        else if (arg == "-scaling_bin") {
+            if (i + 1 >= argc || argv[i+1][0] == '-') {
+                cerr << "Error: -scaling_bin flag cannot be empty. " << endl; exit(1);
+            }
+            try { scaling_bin = stoi(argv[++i]); }
+            catch (const invalid_argument&) {
+                cerr << "Error: -scaling_bin flag expects a number. " << endl; exit(1);
+            }
+        }
         else if (arg == "-input") {
             if (i + 1 > argc || argv[i+1][0] == '-') {
                 cerr << "Error: -input flag cannot be empty. " << endl; exit(1);
@@ -116,9 +125,6 @@ int main(int argc, const char * argv[]) {
             catch (const invalid_argument&) {
                 cerr << "Error: -seed flag expects a number. " << endl; exit(1);
             }
-        }
-        else if (arg == "-write_samples") {
-            write_samples = true;
         }
         else if (arg == "-no_posterior_mean") {
             posterior_mean = false;
@@ -200,14 +206,6 @@ int main(int argc, const char * argv[]) {
     // Map observed mutations from the mutations file
     dag.map_mutations(mut_file);
 
-    // posterior_mean requires samples to be written
-    if (posterior_mean) write_samples = true;
-
-    if (!write_samples && !posterior_mean) {
-        cerr << "Error: nothing to output. Enable -write_samples or keep -no_posterior_mean unset." << endl;
-        exit(1);
-    }
-
     dag.compute_coloring();
     #pragma omp parallel num_threads(num_cores)
     {
@@ -223,13 +221,17 @@ int main(int argc, const char * argv[]) {
 
     // Posterior sampling
     ofstream samples_file;
-    if (write_samples) {
-        string node_samples_file = output_prefix + "_node_samples.txt";
-        samples_file.open(node_samples_file);
+    string node_samples_file = output_prefix + "_node_samples.txt";
+    samples_file.open(node_samples_file);
+
+    // Online running sum for posterior mean — only allocated when needed
+    vector<double> sums;
+    if (posterior_mean) {
+        sums.assign(dag.nodes.size(), 0.0);
     }
 
     vector<double> raw_times;
-    if (write_samples && scaling_rep > 0) {
+    if (scaling_rep > 0) {
         raw_times.resize(dag.nodes.size());
     }
 
@@ -240,40 +242,50 @@ int main(int argc, const char * argv[]) {
         }
         cout << "MCMC Iterations: " << (i + 1) * spacing << "/" << total_mcmc_iters << endl;
 
-        if (write_samples) {
-            if (scaling_rep > 0) {
-                // Save unrescaled MCMC sample, apply ARG rescaling, write the rescaled sample,
-                // then restore the unrescaled sample so the next MCMC starts from the unrescaled state
-                for (int j = 0; j < (int)dag.nodes.size(); j++)
-                    raw_times[j] = dag.nodes[j]->time;
-                for (int k = 0; k < scaling_rep; k++) {
-                    Scaler scaler;
-                    scaler.rescale(dag, Ne * m);
-                }
-                for (Node *n : dag.nodes)
-                    samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
-                                 << (n->time + dag.time_origin) * Ne * g << " ";
-                for (int j = 0; j < (int)dag.nodes.size(); j++) {
-                    dag.nodes[j]->time = raw_times[j];
-                    dag.node_times[j]  = raw_times[j];
-                }
-            } else {
-                // No ARG rescaling
-                for (Node *n : dag.nodes)
-                    samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
-                                 << (n->time + dag.time_origin) * Ne * g << " ";
+        if (scaling_rep > 0) {
+            // Save unrescaled MCMC sample, apply ARG rescaling, record the rescaled sample,
+            // then restore the unrescaled sample so the next MCMC starts from the unrescaled state
+            for (int j = 0; j < (int)dag.nodes.size(); j++)
+                raw_times[j] = dag.nodes[j]->time;
+            for (int k = 0; k < scaling_rep; k++) {
+                Scaler scaler;
+                scaler.num_bins = scaling_bin;
+                scaler.rescale(dag, Ne * m);
             }
-            samples_file << "\n";
+            for (int j = 0; j < (int)dag.nodes.size(); j++) {
+                double t = (dag.nodes[j]->time + dag.time_origin) * Ne * g;
+                samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
+                             << t << " ";
+                if (posterior_mean)
+                    sums[j] += t;
+            }
+            for (int j = 0; j < (int)dag.nodes.size(); j++) {
+                dag.nodes[j]->time = raw_times[j];
+                dag.node_times[j]  = raw_times[j];
+            }
+        } else {
+            // No ARG rescaling
+            for (int j = 0; j < (int)dag.nodes.size(); j++) {
+                double t = (dag.nodes[j]->time + dag.time_origin) * Ne * g;
+                samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
+                             << t << " ";
+                if (posterior_mean)
+                    sums[j] += t;
+            }
         }
+        samples_file << "\n";
     }
 
-    if (write_samples) samples_file.close();
+    samples_file.close();
 
-    // Posterior mean: read back from samples file and average
+    // Write posterior mean directly from online sums — no file read-back needed
     if (posterior_mean) {
-        string node_samples_file = output_prefix + "_node_samples.txt";
         string new_node_file = input_prefix + "_new_nodes.txt";
-        dag.posterior_average(node_samples_file, new_node_file);
+        ofstream fout(new_node_file);
+        for (int j = 0; j < (int)dag.nodes.size(); j++)
+            fout << std::setprecision(std::numeric_limits<double>::max_digits10)
+                 << sums[j] / num_samples << "\n";
+        fout.close();
     }
 
     return 0;

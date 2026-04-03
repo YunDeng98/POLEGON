@@ -3,7 +3,7 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
-//  Modified by Wonseop Lim on 03/16/26.
+//  Modified by Wonseop Lim on 04/03/26.
 //
 
 #ifndef Scaler_hpp
@@ -16,7 +16,7 @@ class Scaler {
 
 public:
 
-    int num_windows = 100;
+    int num_bins = 100;
 
     vector<Node *> sorted_nodes = {};
     vector<double> node_deltas = {};

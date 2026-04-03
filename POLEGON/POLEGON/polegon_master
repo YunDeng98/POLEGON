@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # Created by Yun Deng on 10/31/23.
-# Modified by Wonseop Lim on 03/16/26.
+# Modified by Wonseop Lim on 04/03/26.
 
 import numpy as np
 import pandas as pd
@@ -228,7 +228,7 @@ def _run_polegon_binary(polegon_command, input_prefix, output_prefix):
         print("POLEGON failed")
 
 
-def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, input_file,
+def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bin, input_file,
                           output_prefix, max_step, tip_ages_file, gen_time, seed, cores):
     import tempfile
     input_prefix = os.path.splitext(input_file)[0]
@@ -252,6 +252,7 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, input_file
         "-num_samples", f"{num_samples}",
         "-thin",        f"{thin}",
         "-scaling_rep", f"{scaling_rep}",
+        "-scaling_bin", f"{scaling_bin}",
         "-input",       f"{input_prefix}",
         "-output",      f"{output_prefix}",
         "-max_step",    f"{max_step}",
@@ -270,7 +271,7 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, input_file
         os.remove(tmp_tip_ages)
 
 
-def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep,
+def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, scaling_bin,
                          input_file, output_prefix, max_step, tip_ages_file,
                          gen_time, seed, cores):
     import tempfile
@@ -296,6 +297,7 @@ def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep,
         "-num_samples",  f"{num_samples}",
         "-thin",         f"{thin}",
         "-scaling_rep",  f"{scaling_rep}",
+        "-scaling_bin",  f"{scaling_bin}",
         "-input",        f"{input_prefix}",
         "-output",       f"{output_prefix}",
         "-max_step",     f"{max_step}",
@@ -323,13 +325,15 @@ def main():
     parser.add_argument('-mutation_map', type=str, required=False,
                         help='Spatially varying mutation rate map (columns: start end rate).')
     parser.add_argument('-burn_in', type=float, required=False, default=100,
-                        help='MCMC burn-in sweeps (default: 100).')
+                        help='MCMC burn-in (default: 100).')
     parser.add_argument('-num_samples', type=int, required=False, default=100,
                         help='Posterior MCMC samples (default: 100).')
     parser.add_argument('-scaling_rep', type=int, required=False, default=3,
-                        help='Scaler recalibration rounds (default: 3).')
+                        help='ARG rescalingrounds (default: 3).')
+    parser.add_argument('-scaling_bin', type=int, required=False, default=100,
+                        help='Number of time bins used for ARG rescaling (default: 100).')
     parser.add_argument('-thin', type=int, required=False, default=10,
-                        help='Thinning interval between recorded samples (default: 10).')
+                        help='Thinning interval (default: 10).')
     parser.add_argument('-input', type=str, required=True,
                         help='Input tree sequence file (e.g. path/to/input.trees).')
     parser.add_argument('-output', type=str, required=True,
@@ -359,13 +363,13 @@ def main():
     if args.mutation_map is not None:
         polegon_map_workflow(
             args.mutation_map, args.burn_in, args.num_samples, args.thin,
-            args.scaling_rep, args.input, args.output, args.max_step,
+            args.scaling_rep, args.scaling_bin, args.input, args.output, args.max_step,
             args.tip_ages, args.g, args.seed, args.cores
         )
     else:
         polegon_rate_workflow(
             args.m, args.burn_in, args.num_samples, args.thin,
-            args.scaling_rep, args.input, args.output, args.max_step,
+            args.scaling_rep, args.scaling_bin, args.input, args.output, args.max_step,
             args.tip_ages, args.g, args.seed, args.cores
         )
 

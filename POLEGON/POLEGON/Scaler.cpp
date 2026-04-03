@@ -3,7 +3,7 @@
 //  arg_branch_length
 //
 //  Created by Yun Deng on 10/31/23.
-//  Modified by Wonseop Lim on 03/16/26.
+//  Modified by Wonseop Lim on 04/03/26.
 //
 
 #include "Scaler.hpp"
@@ -67,7 +67,7 @@ void Scaler::compute_old_grid() {
         arg_length += (sorted_nodes[i]->time - base_time)*rate;
         base_time = sorted_nodes[i]->time;
     }
-    double unit_arg_length = arg_length/num_windows;
+    double unit_arg_length = arg_length/num_bins;
     double partial_length = 0;
     double window_width = 0;
     base_time = 0;
@@ -83,30 +83,30 @@ void Scaler::compute_old_grid() {
         }
         base_time = sorted_nodes[i]->time;
     }
-    if (old_grid.size() < num_windows + 1) {
+    if (old_grid.size() < num_bins + 1) {
         old_grid.push_back(sorted_nodes.back()->time);
     } else {
         old_grid.back() = sorted_nodes.back()->time;
     }
-    assert(old_grid.size() == num_windows + 1);
-    expected_arg_length.resize(num_windows);
+    assert(old_grid.size() == num_bins + 1);
+    expected_arg_length.resize(num_bins);
     fill(expected_arg_length.begin(), expected_arg_length.end(), unit_arg_length);
 }
 */
 
-// Partitions the time axis into num_windows equal-ARG-length windows
+// Partitions the time axis into num_bins equal-ARG-length windows
 void Scaler::compute_old_grid() {
-    expected_arg_length.resize(num_windows);
+    expected_arg_length.resize(num_bins);
     compute_accumulated_arg_length();
 
-    double unit_arg_length = accumulated_arg_length.back() / num_windows;
+    double unit_arg_length = accumulated_arg_length.back() / num_bins;
     double partial_arg_length = 0;
     int new_index = 0;
     double rate = 0;
     double residue = 0;
 
-    for (int i = 1; i <= num_windows; i++) {
-        partial_arg_length = accumulated_arg_length.back() * i / num_windows;
+    for (int i = 1; i <= num_bins; i++) {
+        partial_arg_length = accumulated_arg_length.back() * i / num_bins;
         auto it = upper_bound(accumulated_arg_length.begin(), accumulated_arg_length.end(), partial_arg_length);
         new_index = (int) distance(accumulated_arg_length.begin(), it);
         new_index = min((int) sorted_nodes.size() - 1, new_index);
@@ -117,7 +117,7 @@ void Scaler::compute_old_grid() {
         old_grid.push_back(sorted_nodes[new_index]->time - residue / rate);
     }
     old_grid.back() = nextafter(sorted_nodes.back()->time, INT_MAX);
-    assert((int)old_grid.size() == num_windows + 1);
+    assert((int)old_grid.size() == num_bins + 1);
 }
 
 void Scaler::compute_new_grid(double theta) {
@@ -138,7 +138,7 @@ void Scaler::compute_new_grid(double theta) {
 }
 
 void Scaler::map_mutations(DAG &dag) {
-    observed_arg_length.resize(num_windows);
+    observed_arg_length.resize(num_bins);
     for (Branch *b : dag.branches) {
         add_mutation(b->mutation_count, b->lower_node->time, b->upper_node->time);
     }
@@ -225,8 +225,8 @@ double Scaler::arg_length(double t) {
 }
 
 void Scaler::add_branch_length(Scaler &scaler) {
-    expected_arg_length.resize(num_windows);
-    for (int i = 0; i < num_windows; i++) {
+    expected_arg_length.resize(num_bins);
+    for (int i = 0; i < num_bins; i++) {
         expected_arg_length[i] += scaler.arg_length(old_grid[i+1]) - scaler.arg_length(old_grid[i]);
     }
 }
@@ -259,7 +259,7 @@ double Scaler::rescale_time(double t) {
     if (t == 0) {
         return 0;
     } else if (t >= old_grid.back()) {
-        new_time = scaling_factors.back()*(t - old_grid[num_windows - 1]) + new_grid[num_windows - 1];
+        new_time = scaling_factors.back()*(t - old_grid[num_bins - 1]) + new_grid[num_bins - 1];
     }
     auto it = lower_bound(old_grid.begin(), old_grid.end(), t);
     int index = (int) (it - old_grid.begin());
