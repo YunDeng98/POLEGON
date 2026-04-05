@@ -63,5 +63,5 @@ Sample3    8000
 You can skip supplying the tip ages file if the input ARG tips already have the correct ages assigned.
 
 # Suggestions from the developers
-- The `-scaling_rep` parameter controls how many rounds of ARG rescaling are applied after MCMC. Default is 10. Setting it to 0 disables rescaling entirely.
+- The `-scaling_rep` parameter controls how many rounds of ARG rescaling are applied after MCMC. Setting it to 0 disables rescaling entirely.
 - If reproducibility is required, set `-seed` to a fixed integer.
