@@ -3,46 +3,32 @@
 //  arg_branch_length
 //
 //  Created by Yun Deng on 10/31/23.
-//  Modified by Wonseop Lim on 04/03/26.
+//  Modified by Wonseop Lim on 04/05/26.
 //
 
+#include <omp.h>
 #include "Scaler.hpp"
 
 Scaler::Scaler() {}
 
 void Scaler::compute_deltas(DAG &dag) {
-    sorted_nodes.resize(dag.nodes.size());
-    copy(dag.nodes.begin(), dag.nodes.end(), sorted_nodes.begin());
-    sort(sorted_nodes.begin(), sorted_nodes.end(), compare_node);
-    node_deltas.resize(sorted_nodes.size());
-
-    int j = 0;
-
-    for (int i = 0; i < (int)dag.nodes.size(); i++) {
-        j = sorted_nodes[i]->index;
-        for (int k = dag.child_start[j]; k < dag.child_start[j+1]; k++) {
-            node_deltas[i] -= dag.child_data[k]->span;
-        }
+    if (sorted_nodes.empty()) {
+        sorted_nodes.resize(dag.nodes.size());
+        copy(dag.nodes.begin(), dag.nodes.end(), sorted_nodes.begin());
+        sort(sorted_nodes.begin(), sorted_nodes.end(), compare_node);
     }
-
-    for (int i = 0; i < (int)dag.nodes.size(); i++) {
-        j = sorted_nodes[i]->index;
-        for (int k = dag.parent_start[j]; k < dag.parent_start[j+1]; k++) {
-            node_deltas[i] += dag.parent_data[k]->span;
-        }
+    int n = (int)sorted_nodes.size();
+    node_deltas.assign(n, 0.0);
+    #pragma omp parallel for schedule(static) num_threads(dag.num_cores)
+    for (int i = 0; i < n; i++) {
+        int j = sorted_nodes[i]->index;
+        double d = 0;
+        for (int k = dag.child_start[j]; k < dag.child_start[j+1]; k++)
+            d -= dag.child_span[k];
+        for (int k = dag.parent_start[j]; k < dag.parent_start[j+1]; k++)
+            d += dag.parent_span[k];
+        node_deltas[i] = d;
     }
-
-    for (int i = 0; i < (int)sorted_nodes.size() - 1; i++) {
-        assert(sorted_nodes[i]->time <= sorted_nodes[i+1]->time);
-    }
-    /*
-    double delta_sum = 0;
-    for (int i = 0; i < sorted_nodes.size(); i++) {
-        delta_sum += node_deltas[i];
-    }
-    double delta_sum_b = accumulate(node_deltas.begin(), node_deltas.end(), 0.0);
-    assert(delta_sum == delta_sum_b);
-     */
 }
 
 void Scaler::compute_accumulated_arg_length() {
@@ -138,9 +124,32 @@ void Scaler::compute_new_grid(double theta) {
 }
 
 void Scaler::map_mutations(DAG &dag) {
-    observed_arg_length.resize(num_bins);
-    for (Branch *b : dag.branches) {
-        add_mutation(b->mutation_count, b->lower_node->time, b->upper_node->time);
+    observed_arg_length.assign(num_bins, 0.0);
+    int nb = (int)dag.branches.size();
+    const vector<double> &og = old_grid;
+    #pragma omp parallel num_threads(dag.num_cores)
+    {
+        vector<double> local(num_bins, 0.0);
+        #pragma omp for schedule(static)
+        for (int bi = 0; bi < nb; bi++) {
+            Branch *b = dag.branches[bi];
+            double lb = b->lower_node->time;
+            double ub = b->upper_node->time;
+            double w  = b->mutation_count;
+            auto it = upper_bound(og.begin(), og.end(), lb);
+            --it;
+            int idx = (int)(it - og.begin());
+            while (og[idx] < ub) {
+                double x = og[idx], y = og[idx+1];
+                double l = min(ub, y) - max(lb, x);
+                double p = (ub == lb) ? 1.0 : min(l / (ub - lb), 1.0);
+                local[idx] += w * p;
+                ++idx;
+            }
+        }
+        #pragma omp critical
+        for (int k = 0; k < num_bins; k++)
+            observed_arg_length[k] += local[k];
     }
 }
 
@@ -166,6 +175,10 @@ void Scaler::add_mutation(double w, double lb, double ub) {
 }
 
 void Scaler::rescale(DAG &dag, double theta) {
+    old_grid = {0};
+    new_grid = {0};
+    scaling_factors.clear();
+
     compute_deltas(dag);
     compute_old_grid();
     map_mutations(dag);
@@ -189,15 +202,11 @@ void Scaler::rescale(DAG &dag, double theta) {
         }
     }
 
-    for (int i = 0; i < (int)dag.node_times.size(); i++)
-        dag.node_times[i] = dag.nodes[i]->time;
-
     for (int i = 0; i < (int)dag.nodes.size(); i++) {
         if (!dag.nodes[i]->is_sample) {
             double lb = dag.lower_bound(i);
             if (dag.nodes[i]->time <= lb) {
                 dag.nodes[i]->time = lb + 1e-6;
-                dag.node_times[i] = dag.nodes[i]->time;
             }
         }
     }

@@ -20,7 +20,7 @@ int main(int argc, const char * argv[]) {
     int num_samples = -1;       // number of posterior MCMC samples
     int burn_in = -1;           // number of burn-in samples
     int spacing = -1;           // thinning interval
-    int scaling_rep = 0;        // number of ARG rescaling rounds
+    int scaling_rep = 5;        // number of ARG rescaling rounds
     int scaling_bin = 100;      // number of time bins used by the Scaler
     double max_step = 10.0;     // maximum exponential draw for root node proposals
     int num_cores = 1;
@@ -224,7 +224,6 @@ int main(int argc, const char * argv[]) {
     string node_samples_file = output_prefix + "_node_samples.txt";
     samples_file.open(node_samples_file);
 
-    // Online running sum for posterior mean — only allocated when needed
     vector<double> sums;
     if (posterior_mean) {
         sums.assign(dag.nodes.size(), 0.0);
@@ -237,21 +236,23 @@ int main(int argc, const char * argv[]) {
 
     int total_mcmc_iters = num_samples * spacing;
     for (int i = 0; i < num_samples; i++) {
-        for (int j = 0; j < spacing; j++) {
+        for (int j = 0; j < spacing; j++)
             dag.no_prior_MCMC();
-        }
-        if ((i + 1) % 100 == 0 || i + 1 == num_samples)
-            cout << "MCMC Iterations: " << (i + 1) * spacing << "/" << total_mcmc_iters << endl;
+        int done = (i + 1) * spacing;
+        if (done % 100 == 0 || i + 1 == num_samples)
+            cout << "MCMC Iterations: " << done << "/" << total_mcmc_iters << endl;
 
         if (scaling_rep > 0) {
             // Save unrescaled MCMC sample, apply ARG rescaling, record the rescaled sample,
             // then restore the unrescaled sample so the next MCMC starts from the unrescaled state
             for (int j = 0; j < (int)dag.nodes.size(); j++)
                 raw_times[j] = dag.nodes[j]->time;
-            for (int k = 0; k < scaling_rep; k++) {
+            {
                 Scaler scaler;
                 scaler.num_bins = scaling_bin;
-                scaler.rescale(dag, Ne * m);
+                for (int k = 0; k < scaling_rep; k++) {
+                    scaler.rescale(dag, Ne * m);
+                }
             }
             for (int j = 0; j < (int)dag.nodes.size(); j++) {
                 double t = (dag.nodes[j]->time + dag.time_origin) * Ne * g;
@@ -260,10 +261,8 @@ int main(int argc, const char * argv[]) {
                 if (posterior_mean)
                     sums[j] += t;
             }
-            for (int j = 0; j < (int)dag.nodes.size(); j++) {
+            for (int j = 0; j < (int)dag.nodes.size(); j++)
                 dag.nodes[j]->time = raw_times[j];
-                dag.node_times[j]  = raw_times[j];
-            }
         } else {
             // No ARG rescaling
             for (int j = 0; j < (int)dag.nodes.size(); j++) {
@@ -278,8 +277,7 @@ int main(int argc, const char * argv[]) {
     }
 
     samples_file.close();
-
-    // Write posterior mean directly from online sums — no file read-back needed
+    
     if (posterior_mean) {
         string new_node_file = input_prefix + "_new_nodes.txt";
         ofstream fout(new_node_file);

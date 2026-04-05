@@ -3,7 +3,7 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
-//  Updated by Wonseop Lim on 03/21/26.
+//  Updated by Wonseop Lim on 04/05/26.
 //
 
 #ifndef DAG_hpp
@@ -52,9 +52,11 @@ public:
     vector<int>    parent_upper_idx = {};
     vector<double> parent_mut_count = {};
     vector<double> parent_mut_rate  = {};
+    vector<double> parent_span      = {};
     vector<int>    child_lower_idx  = {};
     vector<double> child_mut_count  = {};
     vector<double> child_mut_rate   = {};
+    vector<double> child_span       = {};
 
     int updates = 0;
     double max_step = 10.0; // maximum exponential draw for root node proposals
@@ -68,6 +70,7 @@ public:
     void apply_tip_ages(string tip_ages_file, double gen_time);
     void compute_coloring();
     void no_prior_MCMC();
+    void sync_node_times();
     void posterior_average(string samples_file, string output_file);
     void write_node_ages(string filename, double gen_time = 1);
 

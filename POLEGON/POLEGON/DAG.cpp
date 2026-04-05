@@ -3,11 +3,14 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
-//  Updated by Wonseop Lim on 03/21/26.
+//  Updated by Wonseop Lim on 04/05/26.
 //
 
+#include <cassert>
 #include <sstream>
 #include <queue>
+#include <set>
+#include <unordered_set>
 #include <omp.h>
 #include "DAG.hpp"
 
@@ -101,51 +104,91 @@ void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
     }
 }
 
-// Chromatic decomposition of DAG
-// Uses Kahn's topological sort
+// Chromatic decomposition of DAG using DSatur + recoloring
+//
+// colors the most-constrained node first (highest saturation = most distinct
+// colors already used by colored neighbors), breaking ties by degree
+//
+// After DSatur, a recoloring pass tries to eliminate the smallest color class
+// by reassigning each of its nodes to any lower color that does not
+// conflict with its neighbors
 void DAG::compute_coloring() {
     int n = (int)nodes.size();
 
-    vector<int> in_degree(n, 0);
-    for (int i : perm_cache)
-        in_degree[i] = parent_start[i+1] - parent_start[i];
-
-    queue<int> q;
-    for (int i : perm_cache)
-        if (in_degree[i] == 0) q.push(i);
-
-    vector<int> topo_order;
-    topo_order.reserve(perm_cache.size());
-    while (!q.empty()) {
-        int i = q.front(); q.pop();
-        topo_order.push_back(i);
+    vector<vector<int>> adj(n);
+    for (int i : perm_cache) {
+        for (int k = parent_start[i]; k < parent_start[i+1]; k++) {
+            int j = parent_data[k]->upper_node->index;
+            if (j < n && !nodes[j]->is_sample)
+                adj[i].push_back(j);
+        }
         for (int k = child_start[i]; k < child_start[i+1]; k++) {
             int j = child_data[k]->lower_node->index;
-            if (!nodes[j]->is_sample && --in_degree[j] == 0)
-                q.push(j);
+            if (!nodes[j]->is_sample)
+                adj[i].push_back(j);
         }
     }
 
-    // Greedy coloring
     vector<int> node_color(n, -1);
-    for (int i : topo_order) {
-        vector<bool> used;
-        for (int k = parent_start[i]; k < parent_start[i+1]; k++) {
-            int c = node_color[parent_data[k]->upper_node->index];
-            if (c >= 0) {
-                if ((int)used.size() <= c) used.resize(c + 1, false);
-                used[c] = true;
+    vector<int> sat(n, 0);
+    vector<unordered_set<int>> nbr_colors(n);
+
+    auto make_key = [&](int i) {
+        return make_tuple(-sat[i], -(int)adj[i].size(), i);
+    };
+    set<tuple<int,int,int>> pq;
+    for (int i : perm_cache) pq.insert(make_key(i));
+
+    while (!pq.empty()) {
+        int i = get<2>(*pq.begin());
+        pq.erase(pq.begin());
+
+        int color = 0;
+        while (nbr_colors[i].count(color)) color++;
+        node_color[i] = color;
+
+        for (int j : adj[i]) {
+            if (node_color[j] != -1) continue;
+            if (!nbr_colors[j].count(color)) {
+                pq.erase(make_key(j));
+                nbr_colors[j].insert(color);
+                sat[j]++;
+                pq.insert(make_key(j));
             }
         }
-        int color = 0;
-        while (color < (int)used.size() && used[color]) color++;
-        node_color[i] = color;
     }
 
     int num_colors = 0;
-    for (int i : topo_order) num_colors = max(num_colors, node_color[i] + 1);
+    for (int i : perm_cache) num_colors = max(num_colors, node_color[i] + 1);
     color_classes.assign(num_colors, {});
-    for (int i : topo_order) color_classes[node_color[i]].push_back(i);
+    for (int i : perm_cache) color_classes[node_color[i]].push_back(i);
+
+    bool eliminated = true;
+    while (eliminated && (int)color_classes.size() > 1) {
+        eliminated = false;
+        int last = (int)color_classes.size() - 1;
+        vector<pair<int,int>> moves;
+        bool all_moved = true;
+        for (int i : color_classes[last]) {
+            unordered_set<int> forbidden;
+            for (int j : adj[i]) forbidden.insert(node_color[j]);
+            int new_c = -1;
+            for (int c = 0; c < last; c++) {
+                if (!forbidden.count(c)) { new_c = c; break; }
+            }
+            if (new_c < 0) { all_moved = false; break; }
+            moves.push_back({i, new_c});
+        }
+        if (all_moved) {
+            for (auto& [i, c] : moves) node_color[i] = c;
+            color_classes.pop_back();
+            for (auto& cls : color_classes) cls.clear();
+            for (int i : perm_cache) color_classes[node_color[i]].push_back(i);
+            eliminated = true;
+        }
+    }
+
+    num_colors = (int)color_classes.size();
     cout << "Chromatic decomposition: " << num_colors << " color classes" << endl;
     for (int c = 0; c < num_colors; c++)
         cout << "  Class " << c + 1 << ": " << color_classes[c].size() << " nodes" << endl;
@@ -154,24 +197,28 @@ void DAG::compute_coloring() {
     parent_upper_idx.resize(pe);
     parent_mut_count.resize(pe);
     parent_mut_rate.resize(pe);
+    parent_span.resize(pe);
     for (int i = 0; i < n; i++) {
         for (int k = parent_start[i]; k < parent_start[i+1]; k++) {
             Branch *b = parent_data[k];
             parent_upper_idx[k] = b->upper_node->index;
             parent_mut_count[k] = b->mutation_count;
             parent_mut_rate[k]  = b->mutation_rate;
+            parent_span[k]      = b->span;
         }
     }
     int ce = child_start.back();
     child_lower_idx.resize(ce);
     child_mut_count.resize(ce);
     child_mut_rate.resize(ce);
+    child_span.resize(ce);
     for (int i = 0; i < n; i++) {
         for (int k = child_start[i]; k < child_start[i+1]; k++) {
             Branch *b = child_data[k];
             child_lower_idx[k] = b->lower_node->index;
             child_mut_count[k] = b->mutation_count;
             child_mut_rate[k]  = b->mutation_rate;
+            child_span[k]      = b->span;
         }
     }
 }
@@ -186,6 +233,11 @@ void DAG::no_prior_MCMC() {
             }
         }
     }
+}
+
+void DAG::sync_node_times() {
+    for (int i = 0; i < (int)nodes.size(); i++)
+        nodes[i]->time = node_times[i];
 }
 
 void DAG::posterior_average(string samples_file, string output_file) {
@@ -230,14 +282,14 @@ void DAG::write_node_ages(string filename, double gen_time) {
 }
 
 double DAG::lower_bound(int i) {
-    if (child_start[i] == child_start[i+1]) return node_times[i];
+    if (child_start[i] == child_start[i+1]) return nodes[i]->time;
     double lb = 0;
     if (!child_lower_idx.empty()) {
         for (int k = child_start[i]; k < child_start[i+1]; k++)
-            lb = max(node_times[child_lower_idx[k]], lb);
+            lb = max(nodes[child_lower_idx[k]]->time, lb);
     } else {
         for (int k = child_start[i]; k < child_start[i+1]; k++)
-            lb = max(node_times[child_data[k]->lower_node->index], lb);
+            lb = max(child_data[k]->lower_node->time, lb);
     }
     return lb;
 }
@@ -247,10 +299,10 @@ double DAG::upper_bound(int i) {
     double ub = INT_MAX;
     if (!parent_upper_idx.empty()) {
         for (int k = parent_start[i]; k < parent_start[i+1]; k++)
-            ub = min(node_times[parent_upper_idx[k]], ub);
+            ub = min(nodes[parent_upper_idx[k]]->time, ub);
     } else {
         for (int k = parent_start[i]; k < parent_start[i+1]; k++)
-            ub = min(node_times[parent_data[k]->upper_node->index], ub);
+            ub = min(parent_data[k]->upper_node->time, ub);
     }
     return ub;
 }
@@ -292,24 +344,22 @@ double DAG::log_acceptance_weight(int i, double t) {
 double DAG::fast_acceptance_ratio(int i, double t0, double t1) {
     double w0 = 0, w1 = 0;
     for (int k = parent_start[i]; k < parent_start[i+1]; k++) {
-        double upper_t  = node_times[parent_upper_idx[k]];
+        double upper_t  = nodes[parent_upper_idx[k]]->time;
         double count    = parent_mut_count[k];
         double mut_rate = parent_mut_rate[k];
         double rate_0   = (upper_t - t0) * mut_rate;
         double rate_1   = (upper_t - t1) * mut_rate;
         if (rate_0 > 0) { w0 += count*log(rate_0); w0 -= rate_0; } else { w0 = 0; }
         if (rate_1 > 0) { w1 += count*log(rate_1); w1 -= rate_1; } else { w1 = 0; }
-        assert(!isnan(w0)); assert(!isnan(w1));
     }
     for (int k = child_start[i]; k < child_start[i+1]; k++) {
-        double lower_t  = node_times[child_lower_idx[k]];
+        double lower_t  = nodes[child_lower_idx[k]]->time;
         double count    = child_mut_count[k];
         double mut_rate = child_mut_rate[k];
         double rate_0   = (t0 - lower_t) * mut_rate;
         double rate_1   = (t1 - lower_t) * mut_rate;
         if (rate_0 > 0) { w0 += count*log(rate_0); w0 -= rate_0; } else { w0 = 0; }
         if (rate_1 > 0) { w1 += count*log(rate_1); w1 -= rate_1; } else { w1 = 0; }
-        assert(!isnan(w0)); assert(!isnan(w1));
     }
     return exp(w1 - w0);
 }
@@ -324,7 +374,7 @@ double DAG::acceptance_ratio(int i, double t) {
 
 // For root nodes multiply by exp((t - t0)/lambda) (Hastings correction)
 double DAG::no_prior_acceptance_ratio(int i, double t, double lb, double ub) {
-    double t0 = node_times[i];
+    double t0 = nodes[i]->time;
     double q = fast_acceptance_ratio(i, t0, t);
     if (ub == INT_MAX) {
         q *= exp((t - t0)/lambda);
@@ -348,7 +398,7 @@ void DAG::propose(int i, Distribution *d) {
 void DAG::no_prior_propose(int i) {
     double lb = lower_bound(i);
     double ub = upper_bound(i);
-    double t0 = node_times[i];
+    double t0 = nodes[i]->time;
     double t = 0;
     if (ub != INT_MAX) {
         t = random_non_root_time(t0, lb, ub);
@@ -358,7 +408,6 @@ void DAG::no_prior_propose(int i) {
     double ar = no_prior_acceptance_ratio(i, t, lb, ub);
     double q = uniform_random();
     if (q < ar) {
-        node_times[i] = t;
         nodes[i]->time = t;
     }
 }

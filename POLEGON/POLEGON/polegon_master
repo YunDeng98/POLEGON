@@ -328,8 +328,8 @@ def main():
                         help='MCMC burn-in (default: 100).')
     parser.add_argument('-n_samples', type=int, required=False, default=100,
                         help='Posterior MCMC samples (default: 100).')
-    parser.add_argument('-scaling_rep', type=int, required=False, default=10,
-                        help='ARG rescalingrounds (default: 3).')
+    parser.add_argument('-scaling_rep', type=int, required=False, default=5,
+                        help='ARG rescalingrounds (default: 5).')
     parser.add_argument('-scaling_bin', type=int, required=False, default=100,
                         help='Number of time bins used for ARG rescaling (default: 100).')
     parser.add_argument('-thin', type=int, required=False, default=10,
