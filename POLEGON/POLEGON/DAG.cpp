@@ -104,14 +104,8 @@ void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
     }
 }
 
-// Chromatic decomposition of DAG using DSatur + recoloring
-//
-// colors the most-constrained node first (highest saturation = most distinct
-// colors already used by colored neighbors), breaking ties by degree
-//
-// After DSatur, a recoloring pass tries to eliminate the smallest color class
-// by reassigning each of its nodes to any lower color that does not
-// conflict with its neighbors
+// Chromatic decomposition: DSatur followed by a separate recoloring
+// that eliminates the last color class when possible.
 void DAG::compute_coloring() {
     int n = (int)nodes.size();
 
