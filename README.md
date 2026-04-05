@@ -13,7 +13,7 @@ Fixated on the topology, POLEGON can generate you the posterior samples of the A
 The basic commands is:
 
 ```
-polegon_master -m mutation_rate -input input.trees -output output_prefix -num_samples N -thin K -scaling_rep L
+polegon_master -m mutation_rate -input input.trees -output output_prefix -n_samples N -thin K -scaling_rep L
 ```
 
 The following details to these arguments can be displayed if you simply type `polegon_master`
@@ -24,11 +24,11 @@ The following details to these arguments can be displayed if you simply type `po
 |**-output**|required|output file prefix|
 |**-m**|conditionally required|per base pair per generation mutation rate|
 |**-g**|conditionally required|generation time in years. Required when `-tip_ages` is provided|
-|**-mutation_map**|conditionally required|mutation rate map for the region|
+|**-m_map**|conditionally required|mutation rate map for the region|
 |**-burn_in**|optional|the number of MCMC burn-in iterations discarded. Default: 100|
-|**-num_samples**|optional|the number of posterior ARG samples. Default: 100|
+|**-n_samples**|optional|the number of posterior ARG samples. Default: 100|
 |**-thin**|optional|the number of thinning iterations in MCMC. Default: 10|
-|**-scaling_rep**|optional|the number of ARG rescaling steps after MCMC. Default: 3|
+|**-scaling_rep**|optional|the number of ARG rescaling steps after MCMC. Default: 10|
 |**-scaling_bin**|optional|the number of time bins used for ARG rescaling. Default: 100|
 |**-max_step**|optional|maximum proposal size for root node ages in coalescent units. Default: 10|
 |**-tip_ages**|conditionally required|two-column file of sample ages: `tip_label  calendar_age_BP`. One row per individual. Required for heterochronous (ancient DNA) data. Tip ages supplied via this flag are prioritized, even when the input ARG already contains tip age information.|
@@ -61,5 +61,5 @@ Sample3    8000
 ```
 
 # Suggestions from the developers
-- The `-scaling_rep` parameter controls how many rounds of ARG rescaling are applied after MCMC. Setting it to 0 disables rescaling entirely.
+- The `-scaling_rep` parameter controls how many rounds of ARG rescaling are applied after MCMC. Default is 10. Setting it to 0 disables rescaling entirely.
 - If reproducibility is required, set `-seed` to a fixed integer.

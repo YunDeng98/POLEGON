@@ -249,7 +249,7 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bi
         "-m",           f"{m}",
         "-Ne",          f"{Ne}",
         "-burn_in",     f"{burn_in}",
-        "-num_samples", f"{num_samples}",
+        "-n_samples", f"{num_samples}",
         "-thin",        f"{thin}",
         "-scaling_rep", f"{scaling_rep}",
         "-scaling_bin", f"{scaling_bin}",
@@ -291,10 +291,10 @@ def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, 
     polegon_binary = os.path.join(script_dir, 'polegon')
     polegon_command = [
         polegon_binary,
-        "-mutation_map", f"{mutation_map}",
+        "-m_map",        f"{mutation_map}",
         "-Ne",           f"{Ne}",
         "-burn_in",      f"{burn_in}",
-        "-num_samples",  f"{num_samples}",
+        "-n_samples",    f"{num_samples}",
         "-thin",         f"{thin}",
         "-scaling_rep",  f"{scaling_rep}",
         "-scaling_bin",  f"{scaling_bin}",
@@ -322,13 +322,13 @@ def main():
     )
     parser.add_argument('-m', type=float, required=False,
                         help='Per-bp per-generation mutation rate.')
-    parser.add_argument('-mutation_map', type=str, required=False,
+    parser.add_argument('-m_map', type=str, required=False,
                         help='Spatially varying mutation rate map (columns: start end rate).')
     parser.add_argument('-burn_in', type=float, required=False, default=100,
                         help='MCMC burn-in (default: 100).')
-    parser.add_argument('-num_samples', type=int, required=False, default=100,
+    parser.add_argument('-n_samples', type=int, required=False, default=100,
                         help='Posterior MCMC samples (default: 100).')
-    parser.add_argument('-scaling_rep', type=int, required=False, default=3,
+    parser.add_argument('-scaling_rep', type=int, required=False, default=10,
                         help='ARG rescalingrounds (default: 3).')
     parser.add_argument('-scaling_bin', type=int, required=False, default=100,
                         help='Number of time bins used for ARG rescaling (default: 100).')
@@ -355,20 +355,20 @@ def main():
 
     args = parser.parse_args()
 
-    if args.m is None and args.mutation_map is None:
-        parser.error("At least one of '-m' or '-mutation_map' must be provided.")
+    if args.m is None and args.m_map is None:
+        parser.error("At least one of '-m' or '-m_map' must be provided.")
     if args.tip_ages is not None and args.g is None:
         parser.error("-g is required when -tip_ages is provided.")
 
-    if args.mutation_map is not None:
+    if args.m_map is not None:
         polegon_map_workflow(
-            args.mutation_map, args.burn_in, args.num_samples, args.thin,
+            args.m_map, args.burn_in, args.n_samples, args.thin,
             args.scaling_rep, args.scaling_bin, args.input, args.output, args.max_step,
             args.tip_ages, args.g, args.seed, args.cores
         )
     else:
         polegon_rate_workflow(
-            args.m, args.burn_in, args.num_samples, args.thin,
+            args.m, args.burn_in, args.n_samples, args.thin,
             args.scaling_rep, args.scaling_bin, args.input, args.output, args.max_step,
             args.tip_ages, args.g, args.seed, args.cores
         )

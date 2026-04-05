@@ -42,13 +42,13 @@ int main(int argc, const char * argv[]) {
                 cerr << "Error: -m flag expects a number. " << endl; exit(1);
             }
         }
-        else if (arg == "-mutation_map") {
+        else if (arg == "-m_map") {
             if (i + 1 >= argc || argv[i+1][0] == '-') {
-                cerr << "Error: -mutation_map flag cannot be empty. " << endl; exit(1);
+                cerr << "Error: -m_map flag cannot be empty. " << endl; exit(1);
             }
             try { map_file = argv[++i]; }
             catch (const invalid_argument&) {
-                cerr << "Error: -mutation_map flag expects a string. " << endl; exit(1);
+                cerr << "Error: -m_map flag expects a string. " << endl; exit(1);
             }
         }
         else if (arg == "-Ne") {
@@ -69,13 +69,13 @@ int main(int argc, const char * argv[]) {
                 cerr << "Error: -burn_in flag expects a number. " << endl; exit(1);
             }
         }
-        else if (arg == "-num_samples") {
+        else if (arg == "-n_samples") {
             if (i + 1 >= argc || argv[i+1][0] == '-') {
-                cerr << "Error: -num_samples flag cannot be empty. " << endl; exit(1);
+                cerr << "Error: -n_samples flag cannot be empty. " << endl; exit(1);
             }
             try { num_samples = stoi(argv[++i]); }
             catch (const invalid_argument&) {
-                cerr << "Error: -num_samples flag expects a number. " << endl; exit(1);
+                cerr << "Error: -n_samples flag expects a number. " << endl; exit(1);
             }
         }
         else if (arg == "-scaling_rep") {
@@ -240,7 +240,8 @@ int main(int argc, const char * argv[]) {
         for (int j = 0; j < spacing; j++) {
             dag.no_prior_MCMC();
         }
-        cout << "MCMC Iterations: " << (i + 1) * spacing << "/" << total_mcmc_iters << endl;
+        if ((i + 1) % 100 == 0 || i + 1 == num_samples)
+            cout << "MCMC Iterations: " << (i + 1) * spacing << "/" << total_mcmc_iters << endl;
 
         if (scaling_rep > 0) {
             // Save unrescaled MCMC sample, apply ARG rescaling, record the rescaled sample,
