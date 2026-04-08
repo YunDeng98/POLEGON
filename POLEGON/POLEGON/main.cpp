@@ -219,21 +219,9 @@ int main(int argc, const char * argv[]) {
     }
     cout << "Done" << endl;
 
-    // Posterior sampling
-    ofstream samples_file;
-    string node_samples_file = output_prefix + "_node_samples.txt";
-    samples_file.open(node_samples_file);
-
-    vector<double> sums;
-    if (posterior_mean) {
-        sums.assign(dag.nodes.size(), 0.0);
-    }
-
-    vector<double> raw_times;
-    if (scaling_rep > 0) {
-        raw_times.resize(dag.nodes.size());
-    }
-
+    // MCMC phase: collect all raw samples
+    int n_nodes = (int)dag.nodes.size();
+    vector<vector<double>> all_raw(num_samples, vector<double>(n_nodes));
     int total_mcmc_iters = num_samples * spacing;
     for (int i = 0; i < num_samples; i++) {
         for (int j = 0; j < spacing; j++)
@@ -241,41 +229,46 @@ int main(int argc, const char * argv[]) {
         int done = (i + 1) * spacing;
         if (done % 100 == 0 || i + 1 == num_samples)
             cout << "MCMC Iterations: " << done << "/" << total_mcmc_iters << endl;
+        for (int j = 0; j < n_nodes; j++)
+            all_raw[i][j] = dag.nodes[j]->time;
+    }
 
-        if (scaling_rep > 0) {
-            // Save unrescaled MCMC sample, apply ARG rescaling, record the rescaled sample,
-            // then restore the unrescaled sample so the next MCMC starts from the unrescaled state
-            for (int j = 0; j < (int)dag.nodes.size(); j++)
-                raw_times[j] = dag.nodes[j]->time;
-            {
-                Scaler scaler;
-                scaler.num_bins = scaling_bin;
-                for (int k = 0; k < scaling_rep; k++) {
-                    scaler.rescale(dag, Ne * m);
-                }
+    // Rescaling phase: rescale all samples in parallel
+    if (scaling_rep > 0) {
+        int done_count = 0;
+        #pragma omp parallel for schedule(dynamic,1) num_threads(dag.num_cores)
+        for (int s = 0; s < num_samples; s++) {
+            Scaler scaler;
+            scaler.num_bins = scaling_bin;
+            scaler.local_times = all_raw[s];
+            for (int k = 0; k < scaling_rep; k++)
+                scaler.rescale(dag, Ne * m);
+            all_raw[s] = scaler.local_times;
+            int cnt;
+            #pragma omp atomic capture
+            cnt = ++done_count;
+            if (cnt % 10 == 0 || cnt == num_samples) {
+                #pragma omp critical
+                cout << "ARG Rescaling: " << cnt << "/" << num_samples << endl;
             }
-            for (int j = 0; j < (int)dag.nodes.size(); j++) {
-                double t = (dag.nodes[j]->time + dag.time_origin) * Ne * g;
-                samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
-                             << t << " ";
-                if (posterior_mean)
-                    sums[j] += t;
-            }
-            for (int j = 0; j < (int)dag.nodes.size(); j++)
-                dag.nodes[j]->time = raw_times[j];
-        } else {
-            // No ARG rescaling
-            for (int j = 0; j < (int)dag.nodes.size(); j++) {
-                double t = (dag.nodes[j]->time + dag.time_origin) * Ne * g;
-                samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
-                             << t << " ";
-                if (posterior_mean)
-                    sums[j] += t;
-            }
+        }
+    }
+
+    // Output phase
+    ofstream samples_file;
+    string node_samples_file = output_prefix + "_node_samples.txt";
+    samples_file.open(node_samples_file);
+    vector<double> sums;
+    if (posterior_mean) sums.assign(n_nodes, 0.0);
+    for (int i = 0; i < num_samples; i++) {
+        for (int j = 0; j < n_nodes; j++) {
+            double t = (all_raw[i][j] + dag.time_origin) * Ne * g;
+            samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
+                         << t << " ";
+            if (posterior_mean) sums[j] += t;
         }
         samples_file << "\n";
     }
-
     samples_file.close();
     
     if (posterior_mean) {

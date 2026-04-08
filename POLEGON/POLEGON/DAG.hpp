@@ -77,6 +77,7 @@ public:
 // private:
 
     double lower_bound(int i);  // max time among children of i
+    double lower_bound(int i, const vector<double>& times) const;
     double upper_bound(int i);  // min time among parents of i
     double log_acceptance_weight(int i, double t);
     double acceptance_ratio(int i, double t);

@@ -288,6 +288,14 @@ double DAG::lower_bound(int i) {
     return lb;
 }
 
+double DAG::lower_bound(int i, const vector<double>& times) const {
+    if (child_start[i] == child_start[i+1]) return times[i];
+    double lb = 0;
+    for (int k = child_start[i]; k < child_start[i+1]; k++)
+        lb = max(times[child_lower_idx[k]], lb);
+    return lb;
+}
+
 double DAG::upper_bound(int i) {
     if (parent_start[i] == parent_start[i+1]) return INT_MAX;
     double ub = INT_MAX;

@@ -17,7 +17,9 @@ class Scaler {
 public:
 
     int num_bins = 100;
+    int num_cores = 1;
 
+    vector<double> local_times = {};
     vector<Node *> sorted_nodes = {};
     vector<double> node_deltas = {};
     vector<double> rates = {};
