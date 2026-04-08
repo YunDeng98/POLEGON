@@ -229,7 +229,7 @@ def _run_polegon_binary(polegon_command, input_prefix, output_prefix):
 
 
 def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bin, input_file,
-                          output_prefix, max_step, tip_ages_file, gen_time, seed, cores, no_mean):
+                          output_prefix, max_step, tip_ages_file, gen_time, seed, cores, no_mean, memory_safe):
     import tempfile
     input_prefix = os.path.splitext(input_file)[0]
     old_ts = tskit.load(input_file)
@@ -261,6 +261,8 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bi
     ]
     if no_mean:
         polegon_command += ["-no_mean"]
+    if memory_safe:
+        polegon_command += ["-memory_safe"]
     tmp_tip_ages = None
     if ages_ordered is not None:
         fd, tmp_tip_ages = tempfile.mkstemp(suffix="_tip_ages.txt")
@@ -275,7 +277,7 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bi
 
 def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, scaling_bin,
                          input_file, output_prefix, max_step, tip_ages_file,
-                         gen_time, seed, cores, no_mean):
+                         gen_time, seed, cores, no_mean, memory_safe):
     import tempfile
     input_prefix = os.path.splitext(input_file)[0]
     old_ts = tskit.load(input_file)
@@ -308,6 +310,8 @@ def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, 
     ]
     if no_mean:
         polegon_command += ["-no_mean"]
+    if memory_safe:
+        polegon_command += ["-memory_safe"]
     tmp_tip_ages = None
     if ages_ordered is not None:
         fd, tmp_tip_ages = tempfile.mkstemp(suffix="_tip_ages.txt")
@@ -354,6 +358,8 @@ def main():
                         help='Number of CPU cores for parallel MCMC (default: 1).')
     parser.add_argument('-no_mean', action='store_true',
                         help='Skip computing and writing the posterior mean.')
+    parser.add_argument('-memory_safe', action='store_true',
+                        help='Stream unrescaled samples to disk during MCMC and rescale in batches. Uses O(cores x nodes) memory instead of O(samples x nodes).')
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
@@ -370,13 +376,13 @@ def main():
         polegon_map_workflow(
             args.m_map, args.burn_in, args.n_samples, args.thin,
             args.scaling_rep, args.scaling_bin, args.input, args.output, args.max_step,
-            args.tip_ages, args.g, args.seed, args.cores, args.no_mean
+            args.tip_ages, args.g, args.seed, args.cores, args.no_mean, args.memory_safe
         )
     else:
         polegon_rate_workflow(
             args.m, args.burn_in, args.n_samples, args.thin,
             args.scaling_rep, args.scaling_bin, args.input, args.output, args.max_step,
-            args.tip_ages, args.g, args.seed, args.cores, args.no_mean
+            args.tip_ages, args.g, args.seed, args.cores, args.no_mean, args.memory_safe
         )
 
 if __name__ == "__main__":

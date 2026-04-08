@@ -30,6 +30,7 @@ int main(int argc, const char * argv[]) {
     string map_file = "";       // path to mutation map
     string tip_ages_file = "";  // path to sample ages
     bool posterior_mean = true;   // whether to compute and write the posterior mean
+    bool memory_safe = false;     // stream unrescaled samples to disk, rescale in batches
 
     for (int i = 1; i < argc; ++i) {
         string arg = argv[i];
@@ -129,6 +130,9 @@ int main(int argc, const char * argv[]) {
         else if (arg == "-no_mean") {
             posterior_mean = false;
         }
+        else if (arg == "-memory_safe") {
+            memory_safe = true;
+        }
         else if (arg == "-tip_ages") {
             if (i + 1 >= argc || argv[i+1][0] == '-') {
                 cerr << "Error: -tip_ages flag cannot be empty. " << endl; exit(1);
@@ -220,10 +224,74 @@ int main(int argc, const char * argv[]) {
     cout << "Done" << endl;
 
     int n_nodes = (int)dag.nodes.size();
-
-    // MCMC
-    vector<vector<double>> all_raw(num_samples, vector<double>(n_nodes));
     int total_mcmc_iters = num_samples * spacing;
+
+    // ── memory-safe path: stream unrescaled samples to disk, rescale in batches ──
+    if (memory_safe) {
+        string raw_file = output_prefix + "_unrescaled_node_samples.txt";
+        {
+            ofstream raw_out(raw_file);
+            for (int i = 0; i < num_samples; i++) {
+                for (int j = 0; j < spacing; j++)
+                    dag.no_prior_MCMC();
+                int done = (i + 1) * spacing;
+                if (done % 100 == 0 || i + 1 == num_samples)
+                    cout << "MCMC Iterations: " << done << "/" << total_mcmc_iters << endl;
+                for (int j = 0; j < n_nodes; j++)
+                    raw_out << std::setprecision(std::numeric_limits<double>::max_digits10)
+                            << dag.nodes[j]->time << " ";
+                raw_out << "\n";
+            }
+        }
+        if (scaling_rep == 0) return 0;
+
+        ofstream samples_file(output_prefix + "_node_samples.txt");
+        vector<double> sums;
+        if (posterior_mean) sums.assign(n_nodes, 0.0);
+        {
+            ifstream raw_in(raw_file);
+            vector<vector<double>> batch(dag.num_cores, vector<double>(n_nodes));
+            int done_count = 0;
+            while (done_count < num_samples) {
+                int actual = min(dag.num_cores, num_samples - done_count);
+                for (int s = 0; s < actual; s++)
+                    for (int j = 0; j < n_nodes; j++)
+                        raw_in >> batch[s][j];
+                #pragma omp parallel for schedule(dynamic,1) num_threads(actual)
+                for (int s = 0; s < actual; s++) {
+                    Scaler scaler;
+                    scaler.num_bins = scaling_bin;
+                    scaler.local_times = batch[s];
+                    for (int k = 0; k < scaling_rep; k++)
+                        scaler.rescale(dag, Ne * m);
+                    batch[s] = scaler.local_times;
+                }
+                for (int s = 0; s < actual; s++) {
+                    for (int j = 0; j < n_nodes; j++) {
+                        double t = (batch[s][j] + dag.time_origin) * Ne * g;
+                        samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
+                                     << t << " ";
+                        if (posterior_mean) sums[j] += t;
+                    }
+                    samples_file << "\n";
+                    done_count++;
+                    if (done_count % 10 == 0 || done_count == num_samples)
+                        cout << "ARG Rescaling: " << done_count << "/" << num_samples << endl;
+                }
+            }
+        }
+        samples_file.close();
+        if (posterior_mean) {
+            ofstream fout(input_prefix + "_new_nodes.txt");
+            for (int j = 0; j < n_nodes; j++)
+                fout << std::setprecision(std::numeric_limits<double>::max_digits10)
+                     << sums[j] / num_samples << "\n";
+        }
+        return 0;
+    }
+
+    // ── default path: hold all samples in memory, rescale fully in parallel ──
+    vector<vector<double>> all_raw(num_samples, vector<double>(n_nodes));
     for (int i = 0; i < num_samples; i++) {
         for (int j = 0; j < spacing; j++)
             dag.no_prior_MCMC();
@@ -245,7 +313,6 @@ int main(int argc, const char * argv[]) {
         return 0;
     }
 
-    // Rescaling
     int done_count = 0;
     #pragma omp parallel for schedule(dynamic,1) num_threads(dag.num_cores)
     for (int s = 0; s < num_samples; s++) {
@@ -264,7 +331,6 @@ int main(int argc, const char * argv[]) {
         }
     }
 
-    // Output phase
     ofstream samples_file(output_prefix + "_node_samples.txt");
     vector<double> sums;
     if (posterior_mean) sums.assign(n_nodes, 0.0);

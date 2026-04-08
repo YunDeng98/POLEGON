@@ -35,6 +35,7 @@ The following details to these arguments can be displayed if you simply type `po
 |**-seed**|optional|random seed for the MCMC. Default: 42|
 |**-cores**|optional|number of CPU cores for parallel chromatic Gibbs MCMC. Default: 1|
 |**-no_mean**|optional|skip computing the posterior mean node ages.|
+|**-memory_safe**|optional|flush unrescaled samples to disk during MCMC and rescale in batches of `-cores` samples at a time. Uses O(cores × nodes) peak memory instead of the default O(samples × nodes).|
 
 If you want to use a mutation map, rather than a constant mutation rate along the genome, the mutation map file should be formatted as follows:
 
@@ -66,3 +67,4 @@ You can skip supplying the tip ages file if the input ARG tips already have the 
 # Suggestions from the developers
 - The `-scaling_rep` parameter controls how many rounds of ARG rescaling are applied after MCMC. Setting it to 0 disables rescaling entirely.
 - If reproducibility is required, set `-seed` to a fixed integer.
+- By default, all MCMC samples are held in memory before rescaling — O(samples × nodes). Use `-memory_safe` flag to flush samples to disk and rescale in batches of `-cores`, reducing peak memory to O(cores × nodes) at the cost of slower runtime.
