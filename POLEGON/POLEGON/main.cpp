@@ -221,61 +221,61 @@ int main(int argc, const char * argv[]) {
 
     int n_nodes = (int)dag.nodes.size();
 
-    // MCMC phase: flush each raw sample to a temp file
-    string raw_file = output_prefix + "_unrescaled_node_samples.txt";
-    {
-        ofstream raw_out(raw_file);
-        int total_mcmc_iters = num_samples * spacing;
+    // MCMC
+    vector<vector<double>> all_raw(num_samples, vector<double>(n_nodes));
+    int total_mcmc_iters = num_samples * spacing;
+    for (int i = 0; i < num_samples; i++) {
+        for (int j = 0; j < spacing; j++)
+            dag.no_prior_MCMC();
+        int done = (i + 1) * spacing;
+        if (done % 100 == 0 || i + 1 == num_samples)
+            cout << "MCMC Iterations: " << done << "/" << total_mcmc_iters << endl;
+        for (int j = 0; j < n_nodes; j++)
+            all_raw[i][j] = dag.nodes[j]->time;
+    }
+
+    if (scaling_rep == 0) {
+        ofstream raw_out(output_prefix + "_unrescaled_node_samples.txt");
         for (int i = 0; i < num_samples; i++) {
-            for (int j = 0; j < spacing; j++)
-                dag.no_prior_MCMC();
-            int done = (i + 1) * spacing;
-            if (done % 100 == 0 || i + 1 == num_samples)
-                cout << "MCMC Iterations: " << done << "/" << total_mcmc_iters << endl;
             for (int j = 0; j < n_nodes; j++)
                 raw_out << std::setprecision(std::numeric_limits<double>::max_digits10)
-                        << dag.nodes[j]->time << " ";
+                        << all_raw[i][j] << " ";
             raw_out << "\n";
+        }
+        return 0;
+    }
+
+    // Rescaling
+    int done_count = 0;
+    #pragma omp parallel for schedule(dynamic,1) num_threads(dag.num_cores)
+    for (int s = 0; s < num_samples; s++) {
+        Scaler scaler;
+        scaler.num_bins = scaling_bin;
+        scaler.local_times = all_raw[s];
+        for (int k = 0; k < scaling_rep; k++)
+            scaler.rescale(dag, Ne * m);
+        all_raw[s] = scaler.local_times;
+        int cnt;
+        #pragma omp atomic capture
+        cnt = ++done_count;
+        if (cnt % 10 == 0 || cnt == num_samples) {
+            #pragma omp critical
+            cout << "ARG Rescaling: " << cnt << "/" << num_samples << endl;
         }
     }
 
-    if (scaling_rep == 0) return 0;
-
-    // Rescaling + output phase: process num_cores samples at a time
+    // Output phase
     ofstream samples_file(output_prefix + "_node_samples.txt");
     vector<double> sums;
     if (posterior_mean) sums.assign(n_nodes, 0.0);
-    {
-        ifstream raw_in(raw_file);
-        vector<vector<double>> batch(dag.num_cores, vector<double>(n_nodes));
-        int done_count = 0;
-        while (done_count < num_samples) {
-            int actual = min(dag.num_cores, num_samples - done_count);
-            for (int s = 0; s < actual; s++)
-                for (int j = 0; j < n_nodes; j++)
-                    raw_in >> batch[s][j];
-            #pragma omp parallel for schedule(dynamic,1) num_threads(actual)
-            for (int s = 0; s < actual; s++) {
-                Scaler scaler;
-                scaler.num_bins = scaling_bin;
-                scaler.local_times = batch[s];
-                for (int k = 0; k < scaling_rep; k++)
-                    scaler.rescale(dag, Ne * m);
-                batch[s] = scaler.local_times;
-            }
-            for (int s = 0; s < actual; s++) {
-                for (int j = 0; j < n_nodes; j++) {
-                    double t = (batch[s][j] + dag.time_origin) * Ne * g;
-                    samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
-                                 << t << " ";
-                    if (posterior_mean) sums[j] += t;
-                }
-                samples_file << "\n";
-            }
-            done_count += actual;
-            if (done_count % 10 == 0 || done_count == num_samples)
-                cout << "ARG Rescaling: " << done_count << "/" << num_samples << endl;
+    for (int i = 0; i < num_samples; i++) {
+        for (int j = 0; j < n_nodes; j++) {
+            double t = (all_raw[i][j] + dag.time_origin) * Ne * g;
+            samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
+                         << t << " ";
+            if (posterior_mean) sums[j] += t;
         }
+        samples_file << "\n";
     }
     samples_file.close();
     
