@@ -229,7 +229,7 @@ def _run_polegon_binary(polegon_command, input_prefix, output_prefix):
 
 
 def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bin, input_file,
-                          output_prefix, max_step, tip_ages_file, gen_time, seed, cores):
+                          output_prefix, max_step, tip_ages_file, gen_time, seed, cores, no_mean):
     import tempfile
     input_prefix = os.path.splitext(input_file)[0]
     old_ts = tskit.load(input_file)
@@ -259,6 +259,8 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bi
         "-seed",        f"{seed}",
         "-cores",       f"{cores}",
     ]
+    if no_mean:
+        polegon_command += ["-no_mean"]
     tmp_tip_ages = None
     if ages_ordered is not None:
         fd, tmp_tip_ages = tempfile.mkstemp(suffix="_tip_ages.txt")
@@ -273,7 +275,7 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bi
 
 def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, scaling_bin,
                          input_file, output_prefix, max_step, tip_ages_file,
-                         gen_time, seed, cores):
+                         gen_time, seed, cores, no_mean):
     import tempfile
     input_prefix = os.path.splitext(input_file)[0]
     old_ts = tskit.load(input_file)
@@ -304,6 +306,8 @@ def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, 
         "-seed",         f"{seed}",
         "-cores",        f"{cores}",
     ]
+    if no_mean:
+        polegon_command += ["-no_mean"]
     tmp_tip_ages = None
     if ages_ordered is not None:
         fd, tmp_tip_ages = tempfile.mkstemp(suffix="_tip_ages.txt")
@@ -348,6 +352,8 @@ def main():
                         help='Random seed (default: 42).')
     parser.add_argument('-cores', type=int, required=False, default=1,
                         help='Number of CPU cores for parallel MCMC (default: 1).')
+    parser.add_argument('-no_mean', action='store_true',
+                        help='Skip computing and writing the posterior mean.')
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
@@ -364,13 +370,13 @@ def main():
         polegon_map_workflow(
             args.m_map, args.burn_in, args.n_samples, args.thin,
             args.scaling_rep, args.scaling_bin, args.input, args.output, args.max_step,
-            args.tip_ages, args.g, args.seed, args.cores
+            args.tip_ages, args.g, args.seed, args.cores, args.no_mean
         )
     else:
         polegon_rate_workflow(
             args.m, args.burn_in, args.n_samples, args.thin,
             args.scaling_rep, args.scaling_bin, args.input, args.output, args.max_step,
-            args.tip_ages, args.g, args.seed, args.cores
+            args.tip_ages, args.g, args.seed, args.cores, args.no_mean
         )
 
 if __name__ == "__main__":

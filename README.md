@@ -34,6 +34,7 @@ The following details to these arguments can be displayed if you simply type `po
 |**-tip_ages**|conditionally required|two-column file of sample ages: `tip_label  calendar_age_BP`. One row per individual. Required for heterochronous (ancient DNA) data. Tip ages supplied via this flag are prioritized, even when the input ARG already contains tip age information.|
 |**-seed**|optional|random seed for the MCMC. Default: 42|
 |**-cores**|optional|number of CPU cores for parallel chromatic Gibbs MCMC. Default: 1|
+|**-no_mean**|optional|skip computing the posterior mean node ages|
 
 If you want to use a mutation map, rather than a constant mutation rate along the genome, the mutation map file should be formatted as follows:
 

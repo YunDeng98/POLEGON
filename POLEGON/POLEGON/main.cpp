@@ -126,7 +126,7 @@ int main(int argc, const char * argv[]) {
                 cerr << "Error: -seed flag expects a number. " << endl; exit(1);
             }
         }
-        else if (arg == "-no_posterior_mean") {
+        else if (arg == "-no_mean") {
             posterior_mean = false;
         }
         else if (arg == "-tip_ages") {
