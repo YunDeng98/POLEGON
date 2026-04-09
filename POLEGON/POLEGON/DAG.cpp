@@ -104,52 +104,62 @@ void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
     }
 }
 
-// Chromatic decomposition: DSatur followed by a separate recoloring
-// that eliminates the last color class when possible.
+// Chromatic decomposition via three steps:
+//   1. Smallest-last ordering (Matula & Beck 1983): repeatedly remove the min-degree
+//      node; reversed order guarantees greedy uses ≤ (degeneracy+1) colors,
+//      where degeneracy = max min-degree over all induced sub-ARGs.
+//   2. Greedy coloring: assign each node the smallest color unused by its neighbors.
+//   3. Recoloring pass: try to eliminate the last color class by reassigning its nodes.
 void DAG::compute_coloring() {
     int n = (int)nodes.size();
 
-    vector<vector<int>> adj(n);
+    // Build deduplicated adjacency (multiple branches between same pair count once)
+    vector<unordered_set<int>> adj(n);
     for (int i : perm_cache) {
         for (int k = parent_start[i]; k < parent_start[i+1]; k++) {
             int j = parent_data[k]->upper_node->index;
             if (j < n && !nodes[j]->is_sample)
-                adj[i].push_back(j);
+                adj[i].insert(j);
         }
         for (int k = child_start[i]; k < child_start[i+1]; k++) {
             int j = child_data[k]->lower_node->index;
             if (!nodes[j]->is_sample)
-                adj[i].push_back(j);
+                adj[i].insert(j);
         }
     }
 
-    vector<int> node_color(n, -1);
-    vector<int> sat(n, 0);
-    vector<unordered_set<int>> nbr_colors(n);
+    vector<int> deg(n, 0);
+    for (int i : perm_cache) deg[i] = (int)adj[i].size();
 
-    auto make_key = [&](int i) {
-        return make_tuple(-sat[i], -(int)adj[i].size(), i);
-    };
-    set<tuple<int,int,int>> pq;
-    for (int i : perm_cache) pq.insert(make_key(i));
+    vector<bool> removed(n, false);
+    set<pair<int,int>> pq;
+    for (int i : perm_cache) pq.insert({deg[i], i});
 
+    vector<int> order;
+    order.reserve(perm_cache.size());
     while (!pq.empty()) {
-        int i = get<2>(*pq.begin());
+        int i = pq.begin()->second;
         pq.erase(pq.begin());
-
-        int color = 0;
-        while (nbr_colors[i].count(color)) color++;
-        node_color[i] = color;
-
+        removed[i] = true;
+        order.push_back(i);
         for (int j : adj[i]) {
-            if (node_color[j] != -1) continue;
-            if (!nbr_colors[j].count(color)) {
-                pq.erase(make_key(j));
-                nbr_colors[j].insert(color);
-                sat[j]++;
-                pq.insert(make_key(j));
+            if (!removed[j]) {
+                pq.erase({deg[j], j});
+                deg[j]--;
+                pq.insert({deg[j], j});
             }
         }
+    }
+    reverse(order.begin(), order.end());
+    
+    vector<int> node_color(n, -1);
+    for (int i : order) {
+        unordered_set<int> forbidden;
+        for (int j : adj[i])
+            if (node_color[j] >= 0) forbidden.insert(node_color[j]);
+        int color = 0;
+        while (forbidden.count(color)) color++;
+        node_color[i] = color;
     }
 
     int num_colors = 0;
