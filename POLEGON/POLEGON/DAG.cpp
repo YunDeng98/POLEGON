@@ -109,7 +109,8 @@ void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
 //      node; reversed order guarantees greedy uses ≤ (degeneracy+1) colors,
 //      where degeneracy = max min-degree over all induced sub-ARGs.
 //   2. Greedy coloring: assign each node the smallest color unused by its neighbors.
-//   3. Recoloring pass: try to eliminate the last color class by reassigning its nodes.
+//   3. Recoloring pass: try to eliminate the last color class by reassigning
+//      its nodes to lower colors; repeats until no further reduction is possible.
 void DAG::compute_coloring() {
     int n = (int)nodes.size();
 
