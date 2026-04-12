@@ -25,9 +25,8 @@ public:
 
     int num_leaf_nodes = 0;
     int num_cores = 1;
-    double Ne = 1;
     double lambda = 5;      // scale of the exponential proposal for root node times
-    double time_origin = 0; // age of youngest tip in coalescent units
+    double time_origin = 0; // age of youngest tip in generation time
 
     // Virtual root at t=infinity; all local-tree roots connect to this node
     // so that branches leading to the root are handled uniformly without special cases
@@ -61,7 +60,7 @@ public:
     int updates = 0;
     double max_step = 10.0; // maximum exponential draw for root node proposals
 
-    DAG(double n);
+    DAG();
 
     void load_dag(string node_file, string branch_file);
     void load_dag(string node_file, string branch_file, Mutation_map &mm);

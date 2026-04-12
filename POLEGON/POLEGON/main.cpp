@@ -26,7 +26,6 @@ int main(int argc, const char * argv[]) {
     int num_cores = 1;
     string input_prefix = "", output_prefix = "";
     int seed = 42;              // random seed
-    double Ne = 0;              // effective population size
     string map_file = "";       // path to mutation map
     string tip_ages_file = "";  // path to sample ages
     bool posterior_mean = true;   // whether to compute and write the posterior mean
@@ -50,15 +49,6 @@ int main(int argc, const char * argv[]) {
             try { map_file = argv[++i]; }
             catch (const invalid_argument&) {
                 cerr << "Error: -m_map flag expects a string. " << endl; exit(1);
-            }
-        }
-        else if (arg == "-Ne") {
-            if (i + 1 >= argc || argv[i+1][0] == '-') {
-                cerr << "Error: -Ne flag cannot be empty. " << endl; exit(1);
-            }
-            try { Ne = stod(argv[++i]); }
-            catch (const invalid_argument&) {
-                cerr << "Error: -Ne flag expects a number. " << endl; exit(1);
             }
         }
         else if (arg == "-burn_in") {
@@ -181,7 +171,7 @@ int main(int argc, const char * argv[]) {
     }
     if (g == -1) g = 1;
 
-    DAG dag = DAG(Ne);
+    DAG dag = DAG();
     dag.max_step = max_step;
     dag.num_cores = num_cores;
     string node_file   = input_prefix + "_nodes.txt";
@@ -263,12 +253,12 @@ int main(int argc, const char * argv[]) {
                     scaler.num_bins = scaling_bin;
                     scaler.local_times = batch[s];
                     for (int k = 0; k < scaling_rep; k++)
-                        scaler.rescale(dag, Ne * m);
+                        scaler.rescale(dag, m);
                     batch[s] = scaler.local_times;
                 }
                 for (int s = 0; s < actual; s++) {
                     for (int j = 0; j < n_nodes; j++) {
-                        double t = (batch[s][j] + dag.time_origin) * Ne * g;
+                        double t = (batch[s][j] + dag.time_origin) * g;
                         samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
                                      << t << " ";
                         if (posterior_mean) sums[j] += t;
@@ -320,7 +310,7 @@ int main(int argc, const char * argv[]) {
         scaler.num_bins = scaling_bin;
         scaler.local_times = all_raw[s];
         for (int k = 0; k < scaling_rep; k++)
-            scaler.rescale(dag, Ne * m);
+            scaler.rescale(dag, m);
         all_raw[s] = scaler.local_times;
         int cnt;
         #pragma omp atomic capture
@@ -336,7 +326,7 @@ int main(int argc, const char * argv[]) {
     if (posterior_mean) sums.assign(n_nodes, 0.0);
     for (int i = 0; i < num_samples; i++) {
         for (int j = 0; j < n_nodes; j++) {
-            double t = (all_raw[i][j] + dag.time_origin) * Ne * g;
+            double t = (all_raw[i][j] + dag.time_origin) * g;
             samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
                          << t << " ";
             if (posterior_mean) sums[j] += t;

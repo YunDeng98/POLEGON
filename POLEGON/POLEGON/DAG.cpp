@@ -14,9 +14,7 @@
 #include <omp.h>
 #include "DAG.hpp"
 
-DAG::DAG(double n) {
-    Ne = n;
-}
+DAG::DAG() {}
 
 void DAG::load_dag(string node_file, string branch_file) {
     load_nodes(node_file);
@@ -53,13 +51,13 @@ void DAG::map_mutations(string mut_file) {
 
 void DAG::compute_mutation_rates(double theta) {
     for (Branch *b : branches) {
-        b->mutation_rate = b->span*theta*Ne;
+        b->mutation_rate = b->span*theta;
     }
 }
 
 // Adjusts ARG for heterochronous samples
-//   Convert times in coalescent units and shift all node times so the youngest tip is at t=0
-//   store the shift in time_origin and correct any internal node whose time falls at or below 
+//   Shift all node times so the youngest tip is at t=0 (in generation time)
+//   store the shift in time_origin and correct any internal node whose time falls at or below
 //   its oldest child to lb + 1e-6
 void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
     ifstream fin(tip_ages_file);
@@ -67,7 +65,7 @@ void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
         cerr << "tip_ages file not found: " << tip_ages_file << endl;
         exit(1);
     }
-    vector<double> tip_ages_coal;
+    vector<double> tip_ages_gen;
     double age_years;
     double min_age = numeric_limits<double>::infinity();
     for (int i = 0; i < (int)nodes.size(); i++) {
@@ -76,9 +74,9 @@ void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
                 cerr << "tip_ages file has fewer entries than the number of tips in the ARG" << endl;
                 exit(1);
             }
-            double age_coal = age_years / (gen_time * Ne);
-            tip_ages_coal.push_back(age_coal);
-            min_age = min(min_age, age_coal);
+            double age_gen = age_years / gen_time;
+            tip_ages_gen.push_back(age_gen);
+            min_age = min(min_age, age_gen);
         }
     }
     time_origin = min_age;
@@ -89,7 +87,7 @@ void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
     int s = 0;
     for (int i = 0; i < (int)nodes.size(); i++) {
         if (nodes[i]->is_sample) {
-            nodes[i]->time = tip_ages_coal[s++] - min_age;
+            nodes[i]->time = tip_ages_gen[s++] - min_age;
             node_times[i] = nodes[i]->time;
         }
     }
@@ -281,7 +279,7 @@ void DAG::write_node_ages(string filename, double gen_time) {
     ofstream file;
     file.open(filename);
     for (Node *n : nodes) {
-        file << std::setprecision(std::numeric_limits<double>::max_digits10) << (n->time + time_origin)*Ne*gen_time << "\n";
+        file << std::setprecision(std::numeric_limits<double>::max_digits10) << (n->time + time_origin)*gen_time << "\n";
     }
     file.close();
 }
@@ -442,7 +440,7 @@ void DAG::load_nodes(string node_file) {
     int count = 0;
     double x, sf;
     while (fin >> x >> sf) {
-        Node *n = new Node(x/Ne, count);
+        Node *n = new Node(x, count);
         if (sf > 0.5) {
             n->is_sample = true;
             num_leaf_nodes += 1;
@@ -542,7 +540,7 @@ void DAG::load_branches(string branch_file, Mutation_map &mm) {
         ln = nodes[int(c)];
         assert(ln->index < un->index or un == root);
         branch_span[{ln, un}] += y - x;
-        m = mm.mutation_rate(x, y)*Ne;
+        m = mm.mutation_rate(x, y);
         branch_rates[{ln, un}] += m;
     }
     for (auto &x : branch_span) {
