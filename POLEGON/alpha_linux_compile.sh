@@ -10,7 +10,7 @@ fi
 VERSION=$1
 
 # Directory for the release
-RELEASE_DIR="../../releases"
+RELEASE_DIR="../releases"
 VERSION_DIR="$RELEASE_DIR/polegon-$VERSION-alpha-linux-x86_64"
 
 # Create version directory
@@ -26,7 +26,7 @@ g++ -std=c++17 -g -static -fopenmp *.cpp -o $VERSION_DIR/polegon_debug
 cp $VERSION_DIR/polegon polegon
 cp $VERSION_DIR/polegon_debug polegon_debug
 cp polegon_master $VERSION_DIR/polegon_master
-cp ../../LICENSE $VERSION_DIR/LICENSE
+cp ../LICENSE $VERSION_DIR/LICENSE
 
 # Change directory to releases
 cd $RELEASE_DIR
