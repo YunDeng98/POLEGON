@@ -213,28 +213,36 @@ def read_mts(node_file, branch_file, mutation_file):
     return tables.tree_sequence()
 
 
-def _run_polegon_binary(polegon_command, input_prefix, output_prefix):
+def _run_polegon_binary(polegon_command, work_prefix, output_prefix):
     print("Run POLEGON command: " + ' '.join(polegon_command))
     result = subprocess.run(polegon_command)
-    if result.returncode == 0:
-        print("POLEGON executed successfully")
-        new_ts = read_mts(
-            f"{input_prefix}_new_nodes.txt",
-            f"{input_prefix}_branches.txt",
-            f"{input_prefix}_muts.txt"
-        )
-        new_ts.dump(output_prefix + ".trees")
-    else:
+    if result.returncode != 0:
         print("POLEGON failed")
+        return
+    print("POLEGON executed successfully")
+    new_node_file = f"{work_prefix}_new_nodes.txt"
+    if not os.path.exists(new_node_file):
+        print(f"No posterior-mean node times produced "
+              f"(skipping {output_prefix}.trees). "
+              f"This is expected with -scaling_rep 0 or -no_mean.")
+        return
+    new_ts = read_mts(
+        new_node_file,
+        f"{work_prefix}_branches.txt",
+        f"{work_prefix}_muts.txt"
+    )
+    new_ts.dump(output_prefix + ".trees")
 
 
 def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bin, input_file,
                           output_prefix, max_step, tip_ages_file, gen_time, seed, cores, no_mean, memory_safe):
     import tempfile
-    input_prefix = os.path.splitext(input_file)[0]
+    work_prefix = output_prefix
+    out_dir = os.path.dirname(os.path.abspath(output_prefix)) or "."
+    os.makedirs(out_dir, exist_ok=True)
     old_ts = tskit.load(input_file)
-    write_arg(old_ts, f"{input_prefix}_nodes.txt", f"{input_prefix}_branches.txt")
-    write_muts(old_ts, f"{input_prefix}_muts.txt")
+    write_arg(old_ts, f"{work_prefix}_nodes.txt", f"{work_prefix}_branches.txt")
+    write_muts(old_ts, f"{work_prefix}_muts.txt")
     if tip_ages_file is not None:
         ages_ordered = tip_ages_to_ordered(tip_ages_file, old_ts)
     else:
@@ -251,7 +259,7 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bi
         "-thin",        f"{thin}",
         "-scaling_rep", f"{scaling_rep}",
         "-scaling_bin", f"{scaling_bin}",
-        "-input",       f"{input_prefix}",
+        "-input",       f"{work_prefix}",
         "-output",      f"{output_prefix}",
         "-max_step",    f"{max_step}",
         "-seed",        f"{seed}",
@@ -268,7 +276,7 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bi
             for age in ages_ordered:
                 f.write(f"{age}\n")
         polegon_command += ["-tip_ages", tmp_tip_ages, "-g", f"{gen_time}"]
-    _run_polegon_binary(polegon_command, input_prefix, output_prefix)
+    _run_polegon_binary(polegon_command, work_prefix, output_prefix)
     if tmp_tip_ages and os.path.exists(tmp_tip_ages):
         os.remove(tmp_tip_ages)
 
@@ -277,10 +285,12 @@ def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, 
                          input_file, output_prefix, max_step, tip_ages_file,
                          gen_time, seed, cores, no_mean, memory_safe):
     import tempfile
-    input_prefix = os.path.splitext(input_file)[0]
+    work_prefix = output_prefix
+    out_dir = os.path.dirname(os.path.abspath(output_prefix)) or "."
+    os.makedirs(out_dir, exist_ok=True)
     old_ts = tskit.load(input_file)
-    write_arg(old_ts, f"{input_prefix}_nodes.txt", f"{input_prefix}_branches.txt")
-    write_muts(old_ts, f"{input_prefix}_muts.txt")
+    write_arg(old_ts, f"{work_prefix}_nodes.txt", f"{work_prefix}_branches.txt")
+    write_muts(old_ts, f"{work_prefix}_muts.txt")
     m  = average_mutation_rate(mutation_map)
     if tip_ages_file is not None:
         ages_ordered = tip_ages_to_ordered(tip_ages_file, old_ts)
@@ -298,7 +308,7 @@ def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, 
         "-thin",         f"{thin}",
         "-scaling_rep",  f"{scaling_rep}",
         "-scaling_bin",  f"{scaling_bin}",
-        "-input",        f"{input_prefix}",
+        "-input",        f"{work_prefix}",
         "-output",       f"{output_prefix}",
         "-max_step",     f"{max_step}",
         "-seed",         f"{seed}",
@@ -315,7 +325,7 @@ def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, 
             for age in ages_ordered:
                 f.write(f"{age}\n")
         polegon_command += ["-tip_ages", tmp_tip_ages, "-g", f"{gen_time}"]
-    _run_polegon_binary(polegon_command, input_prefix, output_prefix)
+    _run_polegon_binary(polegon_command, work_prefix, output_prefix)
     if tmp_tip_ages and os.path.exists(tmp_tip_ages):
         os.remove(tmp_tip_ages)
 
