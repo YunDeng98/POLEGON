@@ -3,7 +3,7 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
-//  Updated by Wonseop Lim on 04/05/26.
+//  Updated by Wonseop Lim on 05/16/26.
 //
 
 #include <cassert>
@@ -102,13 +102,11 @@ void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
     }
 }
 
-// Chromatic decomposition via three steps:
+// Chromatic decomposition via two steps:
 //   1. Smallest-last ordering (Matula & Beck 1983): repeatedly remove the min-degree
 //      node; reversed order guarantees greedy uses ≤ (degeneracy+1) colors,
 //      where degeneracy = max min-degree over all induced sub-ARGs.
 //   2. Greedy coloring: assign each node the smallest color unused by its neighbors.
-//   3. Recoloring pass: try to eliminate the last color class by reassigning
-//      its nodes to lower colors; repeats until no further reduction is possible.
 void DAG::compute_coloring() {
     int n = (int)nodes.size();
 
@@ -166,32 +164,6 @@ void DAG::compute_coloring() {
     color_classes.assign(num_colors, {});
     for (int i : perm_cache) color_classes[node_color[i]].push_back(i);
 
-    bool eliminated = true;
-    while (eliminated && (int)color_classes.size() > 1) {
-        eliminated = false;
-        int last = (int)color_classes.size() - 1;
-        vector<pair<int,int>> moves;
-        bool all_moved = true;
-        for (int i : color_classes[last]) {
-            unordered_set<int> forbidden;
-            for (int j : adj[i]) forbidden.insert(node_color[j]);
-            int new_c = -1;
-            for (int c = 0; c < last; c++) {
-                if (!forbidden.count(c)) { new_c = c; break; }
-            }
-            if (new_c < 0) { all_moved = false; break; }
-            moves.push_back({i, new_c});
-        }
-        if (all_moved) {
-            for (auto& [i, c] : moves) node_color[i] = c;
-            color_classes.pop_back();
-            for (auto& cls : color_classes) cls.clear();
-            for (int i : perm_cache) color_classes[node_color[i]].push_back(i);
-            eliminated = true;
-        }
-    }
-
-    num_colors = (int)color_classes.size();
     cout << "Chromatic decomposition: " << num_colors << " color classes" << endl;
     for (int c = 0; c < num_colors; c++)
         cout << "  Class " << c + 1 << ": " << color_classes[c].size() << " nodes" << endl;
