@@ -249,11 +249,13 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bi
         ages_ordered = extract_tip_ages_from_ts(old_ts)
         if ages_ordered is not None and gen_time is None:
             sys.exit("Error: -g (generation time) is required when the input tree sequence has heterochronous tip ages.")
+    Ne = estimate_Ne(old_ts, m, ages_ordered, gen_time)
     script_dir    = os.path.dirname(os.path.realpath(__file__))
     polegon_binary = os.path.join(script_dir, 'polegon')
     polegon_command = [
         polegon_binary,
         "-m",           f"{m}",
+        "-Ne",          f"{Ne}",
         "-burn_in",     f"{burn_in}",
         "-n_samples", f"{num_samples}",
         "-thin",        f"{thin}",
@@ -298,11 +300,13 @@ def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, 
         ages_ordered = extract_tip_ages_from_ts(old_ts)
         if ages_ordered is not None and gen_time is None:
             sys.exit("Error: -g (generation time) is required when the input tree sequence has heterochronous tip ages.")
+    Ne = estimate_Ne(old_ts, m, ages_ordered, gen_time)
     script_dir    = os.path.dirname(os.path.realpath(__file__))
     polegon_binary = os.path.join(script_dir, 'polegon')
     polegon_command = [
         polegon_binary,
         "-m_map",        f"{mutation_map}",
+        "-Ne",           f"{Ne}",
         "-burn_in",      f"{burn_in}",
         "-n_samples",    f"{num_samples}",
         "-thin",         f"{thin}",
