@@ -31,7 +31,7 @@ The following details to these arguments can be displayed if you simply type `po
 |**-scaling_rep**|optional|the number of ARG rescaling steps after MCMC. Default: 5|
 |**-scaling_bin**|optional|the number of time bins used for ARG rescaling. Default: 100|
 |**-max_step**|optional|maximum proposal size for root node ages in coalescent units. Default: 10|
-|**-tip_ages**|conditionally required|two-column file of sample ages: `tip_label  calendar_age_BP`. One row per individual. Required for heterochronous (ancient DNA) data. Tip ages supplied via this flag are prioritized, even when the input ARG already contains tip age information.|
+|**-tip_ages**|conditionally required|file of sample ages, in either of two auto-detected formats: one column (one age per haplotype, in the VCF sample order) or two columns (`tip_label  calendar_age_BP`, matched against the tree sequence labels). Required for heterochronous (ancient DNA) data. Tip ages supplied via this flag are prioritized, even when the input ARG already contains tip age information.|
 |**-seed**|optional|random seed for the MCMC. Default: 42|
 |**-cores**|optional|number of CPU cores for parallel chromatic Gibbs MCMC. Default: 1|
 |**-no_mean**|optional|skip computing the posterior mean node ages.|
@@ -54,12 +54,25 @@ For data sets containing samples from different time points (e.g., ancient DNA),
 polegon_master -m mutation_rate -input input.trees -output output_prefix -tip_ages ages.txt -g 29
 ```
 
-The tip ages file should have two columns: the tip label and its age in calendar years before present. One row per individual; both haplotypes of each individual are assigned that age. Tip labels must match those stored in the tree sequence. Example:
+The tip ages file can be given in two formats, and the column count is detected automatically. Ages are in calendar years before present.
+
+With **two columns** (`tip_label  calendar_age_BP`), each label is matched against the individuals stored in the tree sequence, and both haplotypes of an individual are assigned that age. This requires the tree sequence to carry tip labels. Example:
 
 ```
 Sample1    0
 Sample2    3500
 Sample3    8000
+```
+
+With **one column**, give one age per haplotype, in the same order as the samples appear in the VCF; the number of rows must equal the number of sample haplotypes. Use this when the tree sequence has no tip labels, such as raw SINGER output where samples are enumerated `0…n-1`. For diploid samples, list each individual's age once per haplotype. The same three diploids would be written as:
+
+```
+0
+0
+3500
+3500
+8000
+8000
 ```
 
 You can skip supplying the tip ages file if the input ARG tips already have the correct ages assigned.
