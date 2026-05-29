@@ -84,9 +84,9 @@ def tip_ages_to_ordered(tip_ages_file, ts):
 
     if unnamed:
         raise ValueError(
-            f"{len(unnamed)} sample haplotype(s) have no tip label (e.g. node {unnamed[0]}). "
-            f"The two-column format matches per-haplotype tip names; use the single-column "
-            f"format for unlabeled trees, or regenerate the tree with tip labels."
+            f"{len(unnamed)} sample haplotype(s) carry no tip label (e.g. node {unnamed[0]}), "
+            f"so ages cannot be matched by name. Provide one age per line in sample order, "
+            f"or attach tip labels to the tree."
         )
     return [node_to_age[s] for s in samples]
 
@@ -228,15 +228,36 @@ def read_mutation(tables, mutation_file):
     return
 
 
-def read_mts(node_file, branch_file, mutation_file):
+def read_mts(node_file, branch_file, mutation_file, label_source=None):
     tables = read_ARG(node_file, branch_file)
     read_mutation(tables, mutation_file)
     tables.build_index()
     tables.compute_mutation_parents()
+    if label_source is not None and tables.nodes.num_rows == label_source.num_nodes:
+        src = label_source.tables
+        tables.individuals.metadata_schema = src.individuals.metadata_schema
+        tables.individuals.set_columns(
+            flags=src.individuals.flags,
+            location=src.individuals.location,
+            location_offset=src.individuals.location_offset,
+            parents=src.individuals.parents,
+            parents_offset=src.individuals.parents_offset,
+            metadata=src.individuals.metadata,
+            metadata_offset=src.individuals.metadata_offset,
+        )
+        tables.nodes.metadata_schema = src.nodes.metadata_schema
+        tables.nodes.set_columns(
+            flags=tables.nodes.flags,
+            time=tables.nodes.time,
+            population=tables.nodes.population,
+            individual=src.nodes.individual,
+            metadata=src.nodes.metadata,
+            metadata_offset=src.nodes.metadata_offset,
+        )
     return tables.tree_sequence()
 
 
-def _run_polegon_binary(polegon_command, work_prefix, output_prefix):
+def _run_polegon_binary(polegon_command, work_prefix, output_prefix, label_source=None):
     print("Run POLEGON command: " + ' '.join(polegon_command))
     result = subprocess.run(polegon_command)
     if result.returncode != 0:
@@ -252,7 +273,8 @@ def _run_polegon_binary(polegon_command, work_prefix, output_prefix):
     new_ts = read_mts(
         new_node_file,
         f"{work_prefix}_branches.txt",
-        f"{work_prefix}_muts.txt"
+        f"{work_prefix}_muts.txt",
+        label_source=label_source,
     )
     new_ts.dump(output_prefix + ".trees")
 
@@ -301,7 +323,7 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bi
             for age in ages_ordered:
                 f.write(f"{age}\n")
         polegon_command += ["-tip_ages", tmp_tip_ages, "-g", f"{gen_time}"]
-    _run_polegon_binary(polegon_command, work_prefix, output_prefix)
+    _run_polegon_binary(polegon_command, work_prefix, output_prefix, old_ts)
     if tmp_tip_ages and os.path.exists(tmp_tip_ages):
         os.remove(tmp_tip_ages)
 
@@ -352,7 +374,7 @@ def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, 
             for age in ages_ordered:
                 f.write(f"{age}\n")
         polegon_command += ["-tip_ages", tmp_tip_ages, "-g", f"{gen_time}"]
-    _run_polegon_binary(polegon_command, work_prefix, output_prefix)
+    _run_polegon_binary(polegon_command, work_prefix, output_prefix, old_ts)
     if tmp_tip_ages and os.path.exists(tmp_tip_ages):
         os.remove(tmp_tip_ages)
 
