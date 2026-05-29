@@ -56,7 +56,7 @@ polegon_master -m mutation_rate -input input.trees -output output_prefix -tip_ag
 
 The tip ages file can be given in two formats, and the column count is detected automatically. Ages are in calendar years before present.
 
-With **two columns** (`tip_label  calendar_age_BP`), each label is matched against the individuals stored in the tree sequence, and both haplotypes of an individual are assigned that age. This requires the tree sequence to carry tip labels. Example:
+With **two columns** (`tip_label  calendar_age_BP`), each label is matched against the labels stored in the tree sequence. A label belongs to a sampled individual; its sample nodes — both haplotypes, for a diploid — are assigned that age. This requires the tree sequence to carry tip labels. Example:
 
 ```
 Sample1    0
@@ -64,7 +64,7 @@ Sample2    3500
 Sample3    8000
 ```
 
-With **one column**, give one age per haplotype, in the same order as the samples appear in the VCF; the number of rows must equal the number of sample haplotypes. Use this when the tree sequence has no tip labels, such as raw SINGER output where samples are enumerated `0…n-1`. For diploid samples, list each individual's age once per haplotype. The same three diploids would be written as:
+With **one column**, give one age per haplotype, in the same order as the samples appear in the VCF; the number of rows must equal the number of sample haplotypes. Use this when the tree sequence has no tip labels, such as raw SINGER output where the haplotypes are enumerated `0…n-1`. A diploid sample takes two consecutive lines, one per haplotype, so the three samples above would become:
 
 ```
 0

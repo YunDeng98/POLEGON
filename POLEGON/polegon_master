@@ -36,17 +36,18 @@ def tip_ages_to_ordered(tip_ages_file, ts):
     if ncol not in (1, 2):
         raise ValueError(
             f"tip_ages file has {ncol} columns; expected 1 (age per haplotype, "
-            f"in VCF sample order) or 2 (name age)."
+            f"in VCF sample order) or 2 (tip_name age)."
         )
 
     samples = list(ts.samples())
+    n = len(samples)
 
     if ncol == 1:
-        if len(rows) != len(samples):
+        if len(rows) != n:
             raise ValueError(
                 f"tip_ages (single-column) has {len(rows)} ages but the tree "
-                f"sequence has {len(samples)} sample haplotypes. Provide one age "
-                f"per haplotype, in the same order as the VCF samples."
+                f"sequence has {n} sample haplotypes. Provide one age per "
+                f"haplotype, in the same order as the VCF samples."
             )
         ages = []
         for lineno, parts in rows:
@@ -58,47 +59,34 @@ def tip_ages_to_ordered(tip_ages_file, ts):
                 )
         return ages
 
-    age_map = {}
+    name_to_age = {}
     for lineno, parts in rows:
         try:
-            age_map[parts[0]] = float(parts[1])
+            name_to_age[parts[0]] = float(parts[1])
         except ValueError:
             raise ValueError(
                 f"tip_ages line {lineno}: age must be a number, got: {parts[1]!r}"
             )
 
-    if ts.num_individuals == 0:
-        raise ValueError(
-            "Two-column (name age) tip_ages requires labeled individuals in the "
-            "tree sequence, but it has none (e.g. raw SINGER output). Use the "
-            "single-column format: one age per haplotype, in VCF sample order."
-        )
-
     node_to_age = {}
-    for ind in ts.individuals():
-        meta = ind.metadata
-        if isinstance(meta, bytes):
-            name = meta.decode().strip()
-        elif isinstance(meta, str):
-            name = meta.strip()
-        else:
-            name = str(meta).strip()
+    unnamed = []
+    for s in samples:
+        meta = ts.node(s).metadata
+        name = meta.decode().strip() if isinstance(meta, (bytes, bytearray)) else str(meta).strip()
         if not name:
-            raise ValueError(f"Haplotype {ind.id} has no label in the tree sequence.")
-        if name not in age_map:
+            unnamed.append(s)
+            continue
+        if name not in name_to_age:
             raise ValueError(
-                f"Haplotype '{name}' (id {ind.id}) not found in tip_ages file."
+                f"tip '{name}' (node {s}) is not present in the tip_ages file."
             )
-        for nid in ind.nodes:
-            if ts.node(nid).is_sample:
-                node_to_age[nid] = age_map[name]
+        node_to_age[s] = name_to_age[name]
 
-    missing = [s for s in samples if s not in node_to_age]
-    if missing:
+    if unnamed:
         raise ValueError(
-            f"{len(missing)} sample haplotype(s) were not assigned an age "
-            f"(first unassigned: node {missing[0]}). Every sampled individual must "
-            f"be labeled and present in the tip_ages file."
+            f"{len(unnamed)} sample haplotype(s) have no tip label (e.g. node {unnamed[0]}). "
+            f"The two-column format matches per-haplotype tip names; use the single-column "
+            f"format for unlabeled trees, or regenerate the tree with tip labels."
         )
     return [node_to_age[s] for s in samples]
 
