@@ -282,7 +282,7 @@ int main(int argc, const char * argv[]) {
         }
         samples_file.close();
         if (posterior_mean) {
-            ofstream fout(input_prefix + "_new_nodes.txt");
+            ofstream fout(input_prefix + "_posterior_mean_nodes.txt");
             for (int j = 0; j < n_nodes; j++)
                 fout << std::setprecision(std::numeric_limits<double>::max_digits10)
                      << sums[j] / num_samples << "\n";
@@ -346,7 +346,7 @@ int main(int argc, const char * argv[]) {
     samples_file.close();
     
     if (posterior_mean) {
-        string new_node_file = input_prefix + "_new_nodes.txt";
+        string new_node_file = input_prefix + "_posterior_mean_nodes.txt";
         ofstream fout(new_node_file);
         for (int j = 0; j < (int)dag.nodes.size(); j++)
             fout << std::setprecision(std::numeric_limits<double>::max_digits10)

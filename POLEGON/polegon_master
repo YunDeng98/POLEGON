@@ -35,60 +35,78 @@ def tip_ages_to_ordered(tip_ages_file, ts):
         raise ValueError("tip_ages file contains no data lines.")
     if ncol not in (1, 2):
         raise ValueError(
-            f"tip_ages file has {ncol} columns; expected 1 (age per haplotype, "
-            f"in VCF sample order) or 2 (tip_name age)."
+            f"tip_ages file has {ncol} columns; expected 1 (ages in VCF sample order) "
+            f"or 2 (name age)."
         )
 
     samples = list(ts.samples())
     n = len(samples)
 
-    if ncol == 1:
-        if len(rows) != n:
-            raise ValueError(
-                f"tip_ages (single-column) has {len(rows)} ages but the tree "
-                f"sequence has {n} sample haplotypes. Provide one age per "
-                f"haplotype, in the same order as the VCF samples."
-            )
-        ages = []
-        for lineno, parts in rows:
-            try:
-                ages.append(float(parts[0]))
-            except ValueError:
-                raise ValueError(
-                    f"tip_ages line {lineno}: age must be a number, got: {parts[0]!r}"
-                )
-        return ages
+    def _num(lineno, tok):
+        try:
+            return float(tok)
+        except ValueError:
+            raise ValueError(f"tip_ages line {lineno}: age must be a number, got: {tok!r}")
 
+    n_dip = n // 2
+
+    if ncol == 1:
+        ages = [_num(lineno, parts[0]) for lineno, parts in rows]
+        if n % 2 != 0 or len(ages) != n_dip:
+            raise ValueError(
+                f"tip_ages (single-column) expects one age per diploid sample "
+                f"({n_dip} rows for {n} haplotypes), in VCF sample order; got {len(ages)}."
+            )
+        return [age for age in ages for _ in (0, 1)]
+
+    seen = set()
     name_to_age = {}
     for lineno, parts in rows:
-        try:
-            name_to_age[parts[0]] = float(parts[1])
-        except ValueError:
-            raise ValueError(
-                f"tip_ages line {lineno}: age must be a number, got: {parts[1]!r}"
-            )
+        name = parts[0]
+        if name in seen:
+            raise ValueError(f"tip_ages: duplicate name {name!r} (line {lineno}).")
+        seen.add(name)
+        name_to_age[name] = _num(lineno, parts[1])
+    file_names = set(name_to_age)
 
-    node_to_age = {}
-    unnamed = []
-    for s in samples:
-        meta = ts.node(s).metadata
-        name = meta.decode().strip() if isinstance(meta, (bytes, bytearray)) else str(meta).strip()
-        if not name:
-            unnamed.append(s)
-            continue
-        if name not in name_to_age:
-            raise ValueError(
-                f"tip '{name}' (node {s}) is not present in the tip_ages file."
-            )
-        node_to_age[s] = name_to_age[name]
+    def _label(meta):
+        return meta.decode().strip() if isinstance(meta, (bytes, bytearray)) else str(meta).strip()
 
-    if unnamed:
+    if len(name_to_age) == n:
+        level = "per-haplotype"
+        labels = [_label(ts.node(s).metadata) for s in samples]
+    elif n % 2 == 0 and len(name_to_age) == n_dip:
+        level = "per-diploid"
+        labels = [
+            _label(ts.individual(ts.node(s).individual).metadata)
+            if ts.node(s).individual != tskit.NULL else ""
+            for s in samples
+        ]
+    else:
         raise ValueError(
-            f"{len(unnamed)} sample haplotype(s) carry no tip label (e.g. node {unnamed[0]}), "
-            f"so ages cannot be matched by name. Provide one age per line in sample order, "
-            f"or attach tip labels to the tree."
+            f"tip_ages (two-column) has {len(name_to_age)} rows; expected {n} "
+            f"(per-haplotype labels) or {n_dip} (per-diploid labels)."
         )
-    return [node_to_age[s] for s in samples]
+
+    missing_label = next((s for s, lab in zip(samples, labels) if not lab), None)
+    if missing_label is not None:
+        raise ValueError(
+            f"tip_ages {level} matching needs tip labels, but node {missing_label} carries "
+            f"none. Use the single-column format, or attach labels to the tree sequence."
+        )
+    label_set = set(labels)
+    if file_names != label_set:
+        no_row = sorted(label_set - file_names)[:5]
+        no_tip = sorted(file_names - label_set)[:5]
+        raise ValueError(
+            f"tip_ages {level} labels do not match the tree sequence. Tree sequence labels with no row: "
+            f"{no_row or 'none'}; rows matching no tip: {no_tip or 'none'}."
+        )
+    if level == "per-haplotype" and len(label_set) != n:
+        raise ValueError(
+            "tip_ages: Tree sequence has duplicate per-haplotype tip labels; cannot match uniquely."
+        )
+    return [name_to_age[lab] for lab in labels]
 
 
 def extract_tip_ages_from_ts(ts):
@@ -235,6 +253,10 @@ def read_mts(node_file, branch_file, mutation_file, label_source=None):
     tables.compute_mutation_parents()
     if label_source is not None and tables.nodes.num_rows == label_source.num_nodes:
         src = label_source.tables
+
+        def _dec(meta):
+            return meta.decode().strip() if isinstance(meta, (bytes, bytearray)) else str(meta).strip()
+
         tables.individuals.metadata_schema = src.individuals.metadata_schema
         tables.individuals.set_columns(
             flags=src.individuals.flags,
@@ -245,15 +267,44 @@ def read_mts(node_file, branch_file, mutation_file, label_source=None):
             metadata=src.individuals.metadata,
             metadata_offset=src.individuals.metadata_offset,
         )
-        tables.nodes.metadata_schema = src.nodes.metadata_schema
-        tables.nodes.set_columns(
-            flags=tables.nodes.flags,
-            time=tables.nodes.time,
-            population=tables.nodes.population,
-            individual=src.nodes.individual,
-            metadata=src.nodes.metadata,
-            metadata_offset=src.nodes.metadata_offset,
-        )
+
+        ind_name = {ind.id: _dec(ind.metadata) for ind in label_source.individuals()
+                    if _dec(ind.metadata)}
+        to_generate = [
+            s for s in label_source.samples()
+            if int(src.nodes.individual[s]) in ind_name and not label_source.node(s).metadata
+        ]
+
+        if not to_generate:
+            tables.nodes.metadata_schema = src.nodes.metadata_schema
+            tables.nodes.set_columns(
+                flags=tables.nodes.flags,
+                time=tables.nodes.time,
+                population=tables.nodes.population,
+                individual=src.nodes.individual,
+                metadata=src.nodes.metadata,
+                metadata_offset=src.nodes.metadata_offset,
+            )
+        else:
+            mb, mo = src.nodes.metadata, src.nodes.metadata_offset
+            node_meta = [bytes(mb[mo[i]:mo[i + 1]]) for i in range(src.nodes.num_rows)]
+            buckets = {}
+            for s in label_source.samples():
+                iid = int(src.nodes.individual[s])
+                if iid in ind_name:
+                    buckets.setdefault(iid, []).append(int(s))
+            for iid, nodes in buckets.items():
+                for k, s in enumerate(sorted(nodes)):
+                    if not node_meta[s]:
+                        node_meta[s] = f"{ind_name[iid]}_{k}".encode()
+            tables.nodes.metadata_schema = tskit.MetadataSchema.null()
+            tables.nodes.set_columns(
+                flags=tables.nodes.flags,
+                time=tables.nodes.time,
+                population=tables.nodes.population,
+                individual=src.nodes.individual,
+            )
+            tables.nodes.packset_metadata(node_meta)
     return tables.tree_sequence()
 
 
@@ -264,7 +315,7 @@ def _run_polegon_binary(polegon_command, work_prefix, output_prefix, label_sourc
         print("POLEGON failed")
         return
     print("POLEGON executed successfully")
-    new_node_file = f"{work_prefix}_new_nodes.txt"
+    new_node_file = f"{work_prefix}_posterior_mean_nodes.txt"
     if not os.path.exists(new_node_file):
         print(f"No posterior-mean node times produced "
               f"(skipping {output_prefix}.trees). "
@@ -392,7 +443,7 @@ def main():
     parser.add_argument('-n_samples', type=int, required=False, default=100,
                         help='Posterior MCMC samples (default: 100).')
     parser.add_argument('-scaling_rep', type=int, required=False, default=5,
-                        help='ARG rescalingrounds (default: 5).')
+                        help='ARG rescaling rounds (default: 5).')
     parser.add_argument('-scaling_bin', type=int, required=False, default=100,
                         help='Number of time bins used for ARG rescaling (default: 100).')
     parser.add_argument('-thin', type=int, required=False, default=10,
