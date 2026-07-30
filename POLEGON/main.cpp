@@ -211,10 +211,7 @@ int main(int argc, const char * argv[]) {
     dag.map_mutations(mut_file);
 
     dag.compute_coloring();
-    #pragma omp parallel num_threads(num_cores)
-    {
-        seed_random_engine(seed, omp_get_thread_num());
-    }
+    init_random_streams(seed, dag.num_streams);
 
     // Burn-in
     cout << "Burn-in Phase..." << endl;

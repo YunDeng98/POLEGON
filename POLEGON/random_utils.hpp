@@ -16,7 +16,8 @@
 #include <fstream>
 #include <sstream>
 
-void seed_random_engine(int seed, int tid = 0);
+void init_random_streams(int seed, int num_streams);
+void bind_random_stream(int index);
 double uniform_random(); // redraws once if result is within 1e-5 of 0 or 1
 
 #endif /* random_utils_hpp */

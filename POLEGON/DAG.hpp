@@ -25,6 +25,7 @@ public:
 
     int num_leaf_nodes = 0;
     int num_cores = 1;
+    int num_streams = 256;
     double Ne = 1;
     double lambda = 5;      // scale of the exponential proposal for root node times
     double time_origin = 0; // age of youngest tip in coalescent units

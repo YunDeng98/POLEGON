@@ -204,9 +204,16 @@ void DAG::no_prior_MCMC() {
     #pragma omp parallel num_threads(num_cores)
     {
         for (const auto& class_nodes : color_classes) {
+            int n = (int)class_nodes.size();
+            int n_chunks = min(num_streams, n);
             #pragma omp for schedule(static)
-            for (int k = 0; k < (int)class_nodes.size(); k++) {
-                no_prior_propose(class_nodes[k]);
+            for (int s = 0; s < n_chunks; s++) {
+                bind_random_stream(s);
+                int lo = (int)((long)n*s/n_chunks);
+                int hi = (int)((long)n*(s + 1)/n_chunks);
+                for (int k = lo; k < hi; k++) {
+                    no_prior_propose(class_nodes[k]);
+                }
             }
         }
     }
