@@ -49,7 +49,7 @@ public:
     vector<int> perm_cache = {};
     vector<vector<int>> color_classes = {};
 
-    vector<double> node_times = {};
+    vector<double> sample_output_ages = {};
     vector<int>    parent_upper_idx = {};
     vector<double> parent_mut_count = {};
     vector<double> parent_mut_rate  = {};
@@ -71,9 +71,9 @@ public:
     void apply_tip_ages(string tip_ages_file, double gen_time);
     void compute_coloring();
     void no_prior_MCMC();
-    void sync_node_times();
     void posterior_average(string samples_file, string output_file);
     void write_node_ages(string filename, double gen_time = 1);
+    double output_time(int i, double converted) const;
 
 // private:
 

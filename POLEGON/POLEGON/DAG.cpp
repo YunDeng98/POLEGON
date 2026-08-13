@@ -3,7 +3,7 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
-//  Updated by Wonseop Lim on 05/16/26.
+//  Updated by Wonseop Lim on 08/13/26.
 //
 
 #include <cassert>
@@ -58,9 +58,6 @@ void DAG::compute_mutation_rates(double theta) {
 }
 
 // Adjusts ARG for heterochronous samples
-//   Convert times in coalescent units and shift all node times so the youngest tip is at t=0
-//   store the shift in time_origin and correct any internal node whose time falls at or below
-//   its oldest child to lb + 1e-6
 void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
     ifstream fin(tip_ages_file);
     if (!fin.good()) {
@@ -70,12 +67,14 @@ void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
     vector<double> tip_ages_coal;
     double age_years;
     double min_age = numeric_limits<double>::infinity();
+    sample_output_ages.assign(nodes.size(), 0.0);
     for (int i = 0; i < (int)nodes.size(); i++) {
         if (nodes[i]->is_sample) {
             if (!(fin >> age_years)) {
                 cerr << "tip_ages file has fewer entries than the number of tips in the ARG" << endl;
                 exit(1);
             }
+            sample_output_ages[i] = age_years;
             double age_coal = age_years / (gen_time * Ne);
             tip_ages_coal.push_back(age_coal);
             min_age = min(min_age, age_coal);
@@ -84,47 +83,45 @@ void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
     time_origin = min_age;
     for (int i = 0; i < (int)nodes.size(); i++) {
         nodes[i]->time -= min_age;
-        node_times[i] = nodes[i]->time;
     }
     int s = 0;
     for (int i = 0; i < (int)nodes.size(); i++) {
         if (nodes[i]->is_sample) {
             nodes[i]->time = tip_ages_coal[s++] - min_age;
-            node_times[i] = nodes[i]->time;
         }
     }
-    for (int i = 0; i < (int)nodes.size(); i++) {
-        if (!nodes[i]->is_sample) {
-            double lb = lower_bound(i);
-            if (nodes[i]->time <= lb) {
-                nodes[i]->time = lb + 1e-6;
-                node_times[i] = nodes[i]->time;
-            }
+    vector<int> internal_by_time;
+    for (int i = 0; i < (int)nodes.size(); i++)
+        if (!nodes[i]->is_sample) internal_by_time.push_back(i);
+    sort(internal_by_time.begin(), internal_by_time.end(),
+         [this](int a, int b) { return nodes[a]->time < nodes[b]->time; });
+    for (int i : internal_by_time) {
+        double lb = lower_bound(i);
+        if (nodes[i]->time <= lb) {
+            nodes[i]->time = lb + 1e-6;
         }
     }
 }
 
-// Chromatic decomposition via two steps:
-//   1. Smallest-last ordering (Matula & Beck 1983): repeatedly remove the min-degree
-//      node; reversed order guarantees greedy uses ≤ (degeneracy+1) colors,
-//      where degeneracy = max min-degree over all induced sub-ARGs.
-//   2. Greedy coloring: assign each node the smallest color unused by its neighbors.
+// Chromatic decomposition (Matula & Beck 1983)
 void DAG::compute_coloring() {
     int n = (int)nodes.size();
 
-    // Build deduplicated adjacency (multiple branches between same pair count once)
-    vector<unordered_set<int>> adj(n);
+    // Build deduplicated adjacency
+    vector<vector<int>> adj(n);
     for (int i : perm_cache) {
         for (int k = parent_start[i]; k < parent_start[i+1]; k++) {
             int j = parent_data[k]->upper_node->index;
             if (j < n && !nodes[j]->is_sample)
-                adj[i].insert(j);
+                adj[i].push_back(j);
         }
         for (int k = child_start[i]; k < child_start[i+1]; k++) {
             int j = child_data[k]->lower_node->index;
             if (!nodes[j]->is_sample)
-                adj[i].insert(j);
+                adj[i].push_back(j);
         }
+        sort(adj[i].begin(), adj[i].end());
+        adj[i].erase(unique(adj[i].begin(), adj[i].end()), adj[i].end());
     }
 
     vector<int> deg(n, 0);
@@ -206,7 +203,7 @@ void DAG::no_prior_MCMC() {
         for (const auto& class_nodes : color_classes) {
             int n = (int)class_nodes.size();
             int n_chunks = min(num_streams, n);
-            #pragma omp for schedule(static)
+            #pragma omp for schedule(dynamic,1)
             for (int s = 0; s < n_chunks; s++) {
                 bind_random_stream(s);
                 int lo = (int)((long)n*s/n_chunks);
@@ -219,9 +216,9 @@ void DAG::no_prior_MCMC() {
     }
 }
 
-void DAG::sync_node_times() {
-    for (int i = 0; i < (int)nodes.size(); i++)
-        nodes[i]->time = node_times[i];
+double DAG::output_time(int i, double converted) const {
+    if (sample_output_ages.empty()) return converted;
+    return nodes[i]->is_sample ? sample_output_ages[i] : converted;
 }
 
 void DAG::posterior_average(string samples_file, string output_file) {
@@ -260,13 +257,12 @@ void DAG::write_node_ages(string filename, double gen_time) {
     ofstream file;
     file.open(filename);
     for (Node *n : nodes) {
-        file << std::setprecision(std::numeric_limits<double>::max_digits10) << (n->time + time_origin)*Ne*gen_time << "\n";
+        file << std::setprecision(std::numeric_limits<double>::max_digits10) << output_time(n->index, (n->time + time_origin)*Ne*gen_time) << "\n";
     }
     file.close();
 }
 
 double DAG::lower_bound(int i) {
-    if (child_start[i] == child_start[i+1]) return nodes[i]->time;
     double lb = 0;
     if (!child_lower_idx.empty()) {
         for (int k = child_start[i]; k < child_start[i+1]; k++)
@@ -279,7 +275,6 @@ double DAG::lower_bound(int i) {
 }
 
 double DAG::lower_bound(int i, const vector<double>& times) const {
-    if (child_start[i] == child_start[i+1]) return times[i];
     double lb = 0;
     for (int k = child_start[i]; k < child_start[i+1]; k++)
         lb = max(times[child_lower_idx[k]], lb);
@@ -332,7 +327,6 @@ double DAG::log_acceptance_weight(int i, double t) {
     return w;
 }
 
-// Computes exp(w(t1) - w(t0)) over incident branches
 double DAG::fast_acceptance_ratio(int i, double t0, double t1) {
     double w0 = 0, w1 = 0;
     for (int k = parent_start[i]; k < parent_start[i+1]; k++) {
@@ -431,8 +425,6 @@ void DAG::load_nodes(string node_file) {
         count += 1;
     }
     scaling_factors.resize(nodes.size());
-    node_times.resize(nodes.size());
-    for (int i = 0; i < (int)nodes.size(); i++) node_times[i] = nodes[i]->time;
     int n_internal = (int)nodes.size() - num_leaf_nodes;
     perm_cache.resize(n_internal);
     for (int i = 0; i < n_internal; i++) {
@@ -440,7 +432,7 @@ void DAG::load_nodes(string node_file) {
     }
 }
 
-// build CSR adjacency arrays in two passes
+// build CSR adjacency arrays
 void DAG::load_branches(string branch_file) {
     ifstream fin(branch_file);
     if (!fin.good()) {

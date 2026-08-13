@@ -3,7 +3,7 @@
 //  arg_branch_length
 //
 //  Created by Yun Deng on 10/31/23.
-//  Modified by Wonseop Lim on 04/05/26.
+//  Modified by Wonseop Lim on 08/13/26.
 //
 
 #include <omp.h>
@@ -159,7 +159,4 @@ void Scaler::rescale(DAG &dag, double theta) {
             return local_times[a->index] < local_times[b->index];
         return a->index < b->index;
     });
-    for (int i = 0; i < (int)sorted_nodes.size() - 1; i++) {
-        assert(local_times[sorted_nodes[i]->index] <= local_times[sorted_nodes[i+1]->index]);
-    }
 }

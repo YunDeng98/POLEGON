@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd "$(dirname "$0")"
+
 # Check if a version number is provided
 if [ "$#" -ne 1 ]; then
     echo "Usage: bash $0 <version_number>"

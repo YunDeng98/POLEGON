@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # Created by Yun Deng on 10/31/23.
-# Modified by Wonseop Lim on 04/03/26.
+# Modified by Wonseop Lim on 08/13/26.
 
 import numpy as np
 import pandas as pd
@@ -183,16 +183,19 @@ def write_arg(ts, node_file, edge_file):
     np.savetxt(edge_file, branch_table)
 
 def write_muts(ts, mut_file):
-    positions, lower_nodes, upper_nodes, derived_states = [], [], [], []
-    for tree in ts.trees():
-        for s in tree.sites():
-            for m in s.mutations:
-                if m.node != tree.root:
-                    positions.append(s.position)
-                    lower_nodes.append(m.node)
-                    upper_nodes.append(tree.parent(m.node))
-                    derived_states.append(1)
-    mut_table = np.array([positions, lower_nodes, upper_nodes, derived_states]).T
+    edges = ts.tables.edges
+    child, left, right, parent = edges.child, edges.left, edges.right, edges.parent
+    lower_nodes = ts.tables.mutations.node
+    positions = ts.tables.sites.position[ts.tables.mutations.site]
+    span = ts.sequence_length + 1
+    order = np.lexsort((left, child))
+    key = child[order] * span + left[order]
+    j = np.searchsorted(key, lower_nodes * span + positions, side='right') - 1
+    record = order[np.clip(j, 0, None)]
+    on_edge = ((j >= 0) & (child[record] == lower_nodes)
+               & (left[record] <= positions) & (right[record] > positions))
+    mut_table = np.column_stack([positions[on_edge], lower_nodes[on_edge],
+                                 parent[record[on_edge]], np.ones(on_edge.sum())])
     np.savetxt(mut_file, mut_table)
 
 def read_ARG(node_file, edge_file):
@@ -343,8 +346,10 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bi
         ages_ordered = tip_ages_to_ordered(tip_ages_file, old_ts)
     else:
         ages_ordered = extract_tip_ages_from_ts(old_ts)
-        if ages_ordered is not None and gen_time is None:
-            sys.exit("Error: -g (generation time) is required when the input tree sequence has heterochronous tip ages.")
+        if ages_ordered is not None:
+            if gen_time is None:
+                sys.exit("Error: -g (generation time) is required when the input tree sequence has heterochronous tip ages.")
+            ages_ordered = [age * gen_time for age in ages_ordered]
     Ne = estimate_Ne(old_ts, m, ages_ordered, gen_time)
     script_dir    = os.path.dirname(os.path.realpath(__file__))
     polegon_binary = os.path.join(script_dir, 'polegon')
@@ -394,8 +399,10 @@ def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, 
         ages_ordered = tip_ages_to_ordered(tip_ages_file, old_ts)
     else:
         ages_ordered = extract_tip_ages_from_ts(old_ts)
-        if ages_ordered is not None and gen_time is None:
-            sys.exit("Error: -g (generation time) is required when the input tree sequence has heterochronous tip ages.")
+        if ages_ordered is not None:
+            if gen_time is None:
+                sys.exit("Error: -g (generation time) is required when the input tree sequence has heterochronous tip ages.")
+            ages_ordered = [age * gen_time for age in ages_ordered]
     Ne = estimate_Ne(old_ts, m, ages_ordered, gen_time)
     script_dir    = os.path.dirname(os.path.realpath(__file__))
     polegon_binary = os.path.join(script_dir, 'polegon')

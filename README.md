@@ -75,6 +75,6 @@ With **one column**, give ages positionally in VCF sample order — one row per 
 You can skip supplying the tip ages file if the input ARG tips already have the correct ages assigned.
 
 # Suggestions from the developers
-- The `-scaling_rep` parameter controls how many rounds of ARG rescaling are applied after MCMC. Setting it to 0 disables rescaling entirely.
+- The `-scaling_rep` parameter controls how many rounds of ARG rescaling are applied after MCMC. Setting it to 0 disables rescaling entirely (not advised).
 - If reproducibility is required, set `-seed` to a fixed integer.
-- By default, all MCMC samples are held in memory before rescaling — O(samples × nodes). Use `-memory_safe` flag to flush samples to disk and rescale in batches of `-cores`, reducing peak memory to O(cores × nodes) at the cost of slower runtime.
+- By default, all MCMC samples are held in memory before rescaling: O(samples × nodes). Use `-memory_safe` flag to flush samples to disk and rescale in batches of `-cores`, reducing peak memory to O(cores × nodes) at the cost of slower runtime.

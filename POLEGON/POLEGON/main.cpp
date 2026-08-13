@@ -3,10 +3,11 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 12/13/23.
-//  Modified by Wonseop Lim on 04/03/26.
+//  Modified by Wonseop Lim on 08/13/26.
 //
 
 #include <iostream>
+#include <cstdio>
 #include <omp.h>
 #include "DAG.hpp"
 #include "Distribution.hpp"
@@ -225,7 +226,9 @@ int main(int argc, const char * argv[]) {
 
     // ── memory-safe path: stream unrescaled samples to disk, rescale in batches ──
     if (memory_safe) {
-        string raw_file = output_prefix + "_unrescaled_node_samples.txt";
+        string unrescaled_file = output_prefix + "_unrescaled_node_samples.txt";
+        string raw_file = scaling_rep == 0 ? unrescaled_file
+                                           : output_prefix + "_unrescaled_node_samples.tmp";
         {
             ofstream raw_out(raw_file);
             for (int i = 0; i < num_samples; i++) {
@@ -234,9 +237,13 @@ int main(int argc, const char * argv[]) {
                 int done = (i + 1) * spacing;
                 if (done % 100 == 0 || i + 1 == num_samples)
                     cout << "MCMC Iterations: " << done << "/" << total_mcmc_iters << endl;
-                for (int j = 0; j < n_nodes; j++)
+                for (int j = 0; j < n_nodes; j++) {
+                    double t = scaling_rep == 0
+                             ? dag.output_time(j, (dag.nodes[j]->time + dag.time_origin) * Ne * g)
+                             : dag.nodes[j]->time;
                     raw_out << std::setprecision(std::numeric_limits<double>::max_digits10)
-                            << dag.nodes[j]->time << " ";
+                            << t << " ";
+                }
                 raw_out << "\n";
             }
         }
@@ -247,6 +254,7 @@ int main(int argc, const char * argv[]) {
         if (posterior_mean) sums.assign(n_nodes, 0.0);
         {
             ifstream raw_in(raw_file);
+            ofstream unrescaled_out(unrescaled_file);
             vector<vector<double>> batch(dag.num_cores, vector<double>(n_nodes));
             int done_count = 0;
             while (done_count < num_samples) {
@@ -254,6 +262,12 @@ int main(int argc, const char * argv[]) {
                 for (int s = 0; s < actual; s++)
                     for (int j = 0; j < n_nodes; j++)
                         raw_in >> batch[s][j];
+                for (int s = 0; s < actual; s++) {
+                    for (int j = 0; j < n_nodes; j++)
+                        unrescaled_out << std::setprecision(std::numeric_limits<double>::max_digits10)
+                                       << dag.output_time(j, (batch[s][j] + dag.time_origin) * Ne * g) << " ";
+                    unrescaled_out << "\n";
+                }
                 #pragma omp parallel for schedule(dynamic,1) num_threads(actual)
                 for (int s = 0; s < actual; s++) {
                     Scaler scaler;
@@ -265,7 +279,7 @@ int main(int argc, const char * argv[]) {
                 }
                 for (int s = 0; s < actual; s++) {
                     for (int j = 0; j < n_nodes; j++) {
-                        double t = (batch[s][j] + dag.time_origin) * Ne * g;
+                        double t = dag.output_time(j, (batch[s][j] + dag.time_origin) * Ne * g);
                         samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
                                      << t << " ";
                         if (posterior_mean) sums[j] += t;
@@ -278,11 +292,12 @@ int main(int argc, const char * argv[]) {
             }
         }
         samples_file.close();
+        std::remove(raw_file.c_str());
         if (posterior_mean) {
             ofstream fout(input_prefix + "_posterior_mean_nodes.txt");
             for (int j = 0; j < n_nodes; j++)
                 fout << std::setprecision(std::numeric_limits<double>::max_digits10)
-                     << sums[j] / num_samples << "\n";
+                     << dag.output_time(j, sums[j] / num_samples) << "\n";
         }
         return 0;
     }
@@ -304,7 +319,7 @@ int main(int argc, const char * argv[]) {
         for (int i = 0; i < num_samples; i++) {
             for (int j = 0; j < n_nodes; j++)
                 raw_out << std::setprecision(std::numeric_limits<double>::max_digits10)
-                        << all_raw[i][j] << " ";
+                        << dag.output_time(j, (all_raw[i][j] + dag.time_origin) * Ne * g) << " ";
             raw_out << "\n";
         }
         return 0;
@@ -333,7 +348,7 @@ int main(int argc, const char * argv[]) {
     if (posterior_mean) sums.assign(n_nodes, 0.0);
     for (int i = 0; i < num_samples; i++) {
         for (int j = 0; j < n_nodes; j++) {
-            double t = (all_raw[i][j] + dag.time_origin) * Ne * g;
+            double t = dag.output_time(j, (all_raw[i][j] + dag.time_origin) * Ne * g);
             samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
                          << t << " ";
             if (posterior_mean) sums[j] += t;
@@ -347,7 +362,7 @@ int main(int argc, const char * argv[]) {
         ofstream fout(new_node_file);
         for (int j = 0; j < (int)dag.nodes.size(); j++)
             fout << std::setprecision(std::numeric_limits<double>::max_digits10)
-                 << sums[j] / num_samples << "\n";
+                 << dag.output_time(j, sums[j] / num_samples) << "\n";
         fout.close();
     }
 
