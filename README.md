@@ -30,7 +30,6 @@ The following details to these arguments can be displayed if you simply type `po
 |**-thin**|optional|the number of thinning iterations in MCMC. Default: 10|
 |**-scaling_rep**|optional|the number of ARG rescaling steps after MCMC. Default: 5|
 |**-scaling_bin**|optional|the number of time bins used for ARG rescaling. Default: 100|
-|**-max_step**|optional|maximum proposal size for root node ages in coalescent units. Default: 10|
 |**-tip_ages**|conditionally required|file of sample ages, in either of two auto-detected formats: one column (one age per diploid sample or per haplotype, in VCF sample order) or two columns (`name  calendar_age_BP`, where `name` is a per-diploid sample name or a per-haplotype tip label). Required for heterochronous (ancient DNA) data. Tip ages supplied via this flag are prioritized, even when the input ARG already contains tip age information.|
 |**-seed**|optional|random seed for the MCMC. Default: 42|
 |**-cores**|optional|number of CPU cores for parallel chromatic Gibbs MCMC. Default: 1|

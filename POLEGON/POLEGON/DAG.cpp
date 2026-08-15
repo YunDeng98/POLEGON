@@ -3,12 +3,11 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
-//  Updated by Wonseop Lim on 08/13/26.
+//  Updated by Wonseop Lim on 08/15/26.
 //
 
 #include <cassert>
 #include <sstream>
-#include <queue>
 #include <set>
 #include <unordered_set>
 #include <omp.h>
@@ -54,6 +53,20 @@ void DAG::map_mutations(string mut_file) {
 void DAG::compute_mutation_rates(double theta) {
     for (Branch *b : branches) {
         b->mutation_rate = b->span*theta*Ne;
+    }
+}
+
+void DAG::compute_root_lambda() {
+    int n = (int)nodes.size();
+    root_lambda.assign(n, 0.0);
+    for (int i = 0; i < n; i++) {
+        if (nodes[i]->is_sample or parent_start[i] != parent_start[i+1]) continue;
+        double d = 0, s = 0;
+        for (int k = child_start[i]; k < child_start[i+1]; k++) {
+            d += child_data[k]->mutation_count;
+            s += child_data[k]->mutation_rate;
+        }
+        root_lambda[i] = (d + 1)/s;
     }
 }
 
@@ -147,7 +160,7 @@ void DAG::compute_coloring() {
         }
     }
     reverse(order.begin(), order.end());
-    
+
     vector<int> node_color(n, -1);
     for (int i : order) {
         unordered_set<int> forbidden;
@@ -358,12 +371,12 @@ double DAG::acceptance_ratio(int i, double t) {
     return q;
 }
 
-// For root nodes multiply by exp((t - t0)/lambda) (Hastings correction)
+// For root nodes multiply by exp((t - t0)/root_lambda) (Hastings correction)
 double DAG::no_prior_acceptance_ratio(int i, double t, double lb, double ub) {
     double t0 = nodes[i]->time;
     double q = fast_acceptance_ratio(i, t0, t);
     if (ub == INT_MAX) {
-        q *= exp((t - t0)/lambda);
+        q *= exp((t - t0)/root_lambda[i]);
     }
     return q;
 }
@@ -578,15 +591,9 @@ double DAG::random_non_root_time(double t0, double lb, double ub) {
     return t;
 }
 
-// Draws Exp(1/lambda) above lb; rejects and redraws if result exceeds lb + max_step
+// Draws Exp(1/root_lambda) above lb
 double DAG::random_root_time(int i, double lb) {
-    double q = uniform_random();
-    double delta = -lambda*log(q);
-    while (delta > max_step) {
-        q = uniform_random();
-        delta = -lambda*log(q);
-    }
-    return lb + delta;
+    return lb - root_lambda[i]*log(uniform_random());
 }
 
 double DAG::median(std::vector<double>& vec) {

@@ -3,7 +3,7 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 12/13/23.
-//  Modified by Wonseop Lim on 08/13/26.
+//  Modified by Wonseop Lim on 08/15/26.
 //
 
 #include <iostream>
@@ -23,7 +23,6 @@ int main(int argc, const char * argv[]) {
     int spacing = -1;           // thinning interval
     int scaling_rep = 5;        // number of ARG rescaling rounds
     int scaling_bin = 100;      // number of time bins used by the Scaler
-    double max_step = 10.0;     // maximum exponential draw for root node proposals
     int num_cores = 1;
     string input_prefix = "", output_prefix = "";
     int seed = 42;              // random seed
@@ -158,15 +157,6 @@ int main(int argc, const char * argv[]) {
                 cerr << "Error: -cores flag expects a number." << endl; exit(1);
             }
         }
-        else if (arg == "-max_step") {
-            if (i + 1 >= argc || argv[i+1][0] == '-') {
-                cerr << "Error: -max_step flag cannot be empty. " << endl; exit(1);
-            }
-            try { max_step = stod(argv[++i]); }
-            catch (const invalid_argument&) {
-                cerr << "Error: -max_step flag expects a number. " << endl; exit(1);
-            }
-        }
         else {
             cerr << "Error: Unknown flag. " << arg << endl; exit(1);
         }
@@ -183,7 +173,6 @@ int main(int argc, const char * argv[]) {
     if (g == -1) g = 1;
 
     DAG dag = DAG(Ne);
-    dag.max_step = max_step;
     dag.num_cores = num_cores;
     string node_file   = input_prefix + "_nodes.txt";
     string branch_file = input_prefix + "_branches.txt";
@@ -211,6 +200,7 @@ int main(int argc, const char * argv[]) {
     // Map observed mutations from the mutations file
     dag.map_mutations(mut_file);
 
+    dag.compute_root_lambda();
     dag.compute_coloring();
     init_random_streams(seed, dag.num_streams);
 

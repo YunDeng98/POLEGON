@@ -3,7 +3,7 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
-//  Updated by Wonseop Lim on 04/05/26.
+//  Updated by Wonseop Lim on 08/15/26.
 //
 
 #ifndef DAG_hpp
@@ -27,7 +27,6 @@ public:
     int num_cores = 1;
     int num_streams = 256;
     double Ne = 1;
-    double lambda = 5;      // scale of the exponential proposal for root node times
     double time_origin = 0; // age of youngest tip in coalescent units
 
     // Virtual root at t=infinity; all local-tree roots connect to this node
@@ -58,9 +57,9 @@ public:
     vector<double> child_mut_count  = {};
     vector<double> child_mut_rate   = {};
     vector<double> child_span       = {};
+    vector<double> root_lambda      = {};
 
     int updates = 0;
-    double max_step = 10.0; // maximum exponential draw for root node proposals
 
     DAG(double n);
 
@@ -68,6 +67,7 @@ public:
     void load_dag(string node_file, string branch_file, Mutation_map &mm);
     void map_mutations(string mut_file);
     void compute_mutation_rates(double theta);
+    void compute_root_lambda();
     void apply_tip_ages(string tip_ages_file, double gen_time);
     void compute_coloring();
     void no_prior_MCMC();

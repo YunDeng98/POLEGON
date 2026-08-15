@@ -3,7 +3,7 @@
 //  arg_branch_length
 //
 //  Created by Yun Deng on 10/31/23.
-//  Modified by Wonseop Lim on 08/13/26.
+//  Modified by Wonseop Lim on 08/15/26.
 //
 
 #include <omp.h>
