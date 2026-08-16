@@ -30,11 +30,12 @@ The following details to these arguments can be displayed if you simply type `po
 |**-thin**|optional|the number of thinning iterations in MCMC. Default: 10|
 |**-scaling_rep**|optional|the number of ARG rescaling steps after MCMC. Default: 5|
 |**-scaling_bin**|optional|the number of time bins used for ARG rescaling. Default: 100|
+|**-rescaling_subsample**|optional|the number of posterior samples used to estimate the shared ARG rescaling grid and factors. Default: 10|
 |**-tip_ages**|conditionally required|file of sample ages, in either of two auto-detected formats: one column (one age per diploid sample or per haplotype, in VCF sample order) or two columns (`name  calendar_age_BP`, where `name` is a per-diploid sample name or a per-haplotype tip label). Required for heterochronous (ancient DNA) data. Tip ages supplied via this flag are prioritized, even when the input ARG already contains tip age information.|
 |**-seed**|optional|random seed for the MCMC. Default: 42|
 |**-cores**|optional|number of CPU cores for parallel chromatic Gibbs MCMC. Default: 1|
 |**-no_mean**|optional|skip computing the posterior mean node ages.|
-|**-memory_safe**|optional|flush unrescaled samples to disk during MCMC and rescale in batches of `-cores` samples at a time. Uses O(cores × nodes) peak memory instead of the default O(samples × nodes).|
+|**-memory_safe**|optional|flush unrescaled samples to disk during MCMC, then stream them back to apply the rescaling. Uses O(rescaling_subsample × nodes) peak memory instead of the default O(samples × nodes), at the cost of reading the sample file twice.|
 
 If you want to use a mutation map, rather than a constant mutation rate along the genome, the mutation map file should be formatted as follows:
 
@@ -76,4 +77,4 @@ You can skip supplying the tip ages file if the input ARG tips already have the 
 # Suggestions from the developers
 - The `-scaling_rep` parameter controls how many rounds of ARG rescaling are applied after MCMC. Setting it to 0 disables rescaling entirely (not advised).
 - If reproducibility is required, set `-seed` to a fixed integer.
-- By default, all MCMC samples are held in memory before rescaling: O(samples × nodes). Use `-memory_safe` flag to flush samples to disk and rescale in batches of `-cores`, reducing peak memory to O(cores × nodes) at the cost of slower runtime.
+- By default, all MCMC samples are held in memory before rescaling: O(samples × nodes). Use `-memory_safe` flag to flush samples to disk and stream them during rescaling, reducing peak memory to O(rescaling_subsample × nodes) at the cost of reading the sample file twice.

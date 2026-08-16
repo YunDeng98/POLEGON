@@ -197,31 +197,21 @@ void DAG::compute_coloring() {
         cout << "  Class " << c + 1 << ": " << color_classes[c].size() << " nodes" << endl;
 
     int pe = parent_start.back();
-    parent_upper_idx.resize(pe);
     parent_mut_count.resize(pe);
     parent_mut_rate.resize(pe);
-    parent_span.resize(pe);
     for (int i = 0; i < n; i++) {
         for (int k = parent_start[i]; k < parent_start[i+1]; k++) {
-            Branch *b = parent_data[k];
-            parent_upper_idx[k] = b->upper_node->index;
-            parent_mut_count[k] = b->mutation_count;
-            parent_mut_rate[k]  = b->mutation_rate;
-            parent_span[k]      = b->span;
+            parent_mut_count[k] = parent_data[k]->mutation_count;
+            parent_mut_rate[k]  = parent_data[k]->mutation_rate;
         }
     }
     int ce = child_start.back();
-    child_lower_idx.resize(ce);
     child_mut_count.resize(ce);
     child_mut_rate.resize(ce);
-    child_span.resize(ce);
     for (int i = 0; i < n; i++) {
         for (int k = child_start[i]; k < child_start[i+1]; k++) {
-            Branch *b = child_data[k];
-            child_lower_idx[k] = b->lower_node->index;
-            child_mut_count[k] = b->mutation_count;
-            child_mut_rate[k]  = b->mutation_rate;
-            child_span[k]      = b->span;
+            child_mut_count[k] = child_data[k]->mutation_count;
+            child_mut_rate[k]  = child_data[k]->mutation_rate;
         }
     }
 }
@@ -517,6 +507,24 @@ void DAG::load_branches(string branch_file) {
             child_data[cpos[b->upper_node->index]++] = b;
         }
     }
+    int pe = parent_start.back();
+    parent_upper_idx.resize(pe);
+    parent_span.resize(pe);
+    for (int i = 0; i < n; i++) {
+        for (int k = parent_start[i]; k < parent_start[i+1]; k++) {
+            parent_upper_idx[k] = parent_data[k]->upper_node->index;
+            parent_span[k]      = parent_data[k]->span;
+        }
+    }
+    int ce = child_start.back();
+    child_lower_idx.resize(ce);
+    child_span.resize(ce);
+    for (int i = 0; i < n; i++) {
+        for (int k = child_start[i]; k < child_start[i+1]; k++) {
+            child_lower_idx[k] = child_data[k]->lower_node->index;
+            child_span[k]      = child_data[k]->span;
+        }
+    }
 }
 
 void DAG::load_branches(string branch_file, Mutation_map &mm) {
@@ -576,6 +584,24 @@ void DAG::load_branches(string branch_file, Mutation_map &mm) {
         if (b->upper_node != root) {
             parent_data[ppos[b->lower_node->index]++] = b;
             child_data[cpos[b->upper_node->index]++] = b;
+        }
+    }
+    int pe = parent_start.back();
+    parent_upper_idx.resize(pe);
+    parent_span.resize(pe);
+    for (int i = 0; i < n; i++) {
+        for (int k = parent_start[i]; k < parent_start[i+1]; k++) {
+            parent_upper_idx[k] = parent_data[k]->upper_node->index;
+            parent_span[k]      = parent_data[k]->span;
+        }
+    }
+    int ce = child_start.back();
+    child_lower_idx.resize(ce);
+    child_span.resize(ce);
+    for (int i = 0; i < n; i++) {
+        for (int k = child_start[i]; k < child_start[i+1]; k++) {
+            child_lower_idx[k] = child_data[k]->lower_node->index;
+            child_span[k]      = child_data[k]->span;
         }
     }
 }

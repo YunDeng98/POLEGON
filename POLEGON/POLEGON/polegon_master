@@ -333,7 +333,8 @@ def _run_polegon_binary(polegon_command, work_prefix, output_prefix, label_sourc
     new_ts.dump(output_prefix + ".trees")
 
 
-def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bin, input_file,
+def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bin,
+                          rescaling_subsample, input_file,
                           output_prefix, tip_ages_file, gen_time, seed, cores, no_mean, memory_safe):
     import tempfile
     work_prefix = output_prefix
@@ -362,6 +363,7 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bi
         "-thin",        f"{thin}",
         "-scaling_rep", f"{scaling_rep}",
         "-scaling_bin", f"{scaling_bin}",
+        "-rescaling_subsample", f"{rescaling_subsample}",
         "-input",       f"{work_prefix}",
         "-output",      f"{output_prefix}",
         "-seed",        f"{seed}",
@@ -384,7 +386,7 @@ def polegon_rate_workflow(m, burn_in, num_samples, thin, scaling_rep, scaling_bi
 
 
 def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, scaling_bin,
-                         input_file, output_prefix, tip_ages_file,
+                         rescaling_subsample, input_file, output_prefix, tip_ages_file,
                          gen_time, seed, cores, no_mean, memory_safe):
     import tempfile
     work_prefix = output_prefix
@@ -414,6 +416,7 @@ def polegon_map_workflow(mutation_map, burn_in, num_samples, thin, scaling_rep, 
         "-thin",         f"{thin}",
         "-scaling_rep",  f"{scaling_rep}",
         "-scaling_bin",  f"{scaling_bin}",
+        "-rescaling_subsample", f"{rescaling_subsample}",
         "-input",        f"{work_prefix}",
         "-output",       f"{output_prefix}",
         "-seed",         f"{seed}",
@@ -451,6 +454,9 @@ def main():
                         help='ARG rescaling rounds (default: 5).')
     parser.add_argument('-scaling_bin', type=int, required=False, default=100,
                         help='Number of time bins used for ARG rescaling (default: 100).')
+    parser.add_argument('-rescaling_subsample', type=int, required=False, default=10,
+                        help='Number of posterior samples used to estimate the shared '
+                             'ARG rescaling grid and factors (default: 10).')
     parser.add_argument('-thin', type=int, required=False, default=10,
                         help='Thinning interval (default: 10).')
     parser.add_argument('-input', type=str, required=True,
@@ -486,13 +492,15 @@ def main():
     if args.m_map is not None:
         polegon_map_workflow(
             args.m_map, args.burn_in, args.n_samples, args.thin,
-            args.scaling_rep, args.scaling_bin, args.input, args.output,
+            args.scaling_rep, args.scaling_bin, args.rescaling_subsample,
+            args.input, args.output,
             args.tip_ages, args.g, args.seed, args.cores, args.no_mean, args.memory_safe
         )
     else:
         polegon_rate_workflow(
             args.m, args.burn_in, args.n_samples, args.thin,
-            args.scaling_rep, args.scaling_bin, args.input, args.output,
+            args.scaling_rep, args.scaling_bin, args.rescaling_subsample,
+            args.input, args.output,
             args.tip_ages, args.g, args.seed, args.cores, args.no_mean, args.memory_safe
         )
 

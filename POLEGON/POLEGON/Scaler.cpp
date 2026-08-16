@@ -12,106 +12,101 @@
 Scaler::Scaler() {}
 
 void Scaler::compute_deltas(DAG &dag) {
-    if (sorted_nodes.empty()) {
-        sorted_nodes.resize(dag.nodes.size());
-        copy(dag.nodes.begin(), dag.nodes.end(), sorted_nodes.begin());
-        sort(sorted_nodes.begin(), sorted_nodes.end(), [this](const Node* a, const Node* b) {
-            if (local_times[a->index] != local_times[b->index])
-                return local_times[a->index] < local_times[b->index];
-            return a->index < b->index;
-        });
-    }
-    int n = (int)sorted_nodes.size();
+    int n = (int)dag.nodes.size();
     node_deltas.assign(n, 0.0);
-    #pragma omp parallel for schedule(static) num_threads(num_cores)
-    for (int i = 0; i < n; i++) {
-        int j = sorted_nodes[i]->index;
+    for (int j = 0; j < n; j++) {
         double d = 0;
         for (int k = dag.child_start[j]; k < dag.child_start[j+1]; k++)
             d -= dag.child_span[k];
         for (int k = dag.parent_start[j]; k < dag.parent_start[j+1]; k++)
             d += dag.parent_span[k];
-        node_deltas[i] = d;
+        node_deltas[j] = d;
     }
 }
 
-void Scaler::compute_accumulated_arg_length() {
-    rates.resize(sorted_nodes.size());
-    accumulated_arg_length.resize(sorted_nodes.size());
+void Scaler::compute_accumulated_arg_length(const vector<vector<double>> &samples) {
+    int n = (int)node_deltas.size();
+    int K = (int)samples.size();
+    size_t m = (size_t)K*n;
+    vector<double> pooled(m);
+    for (int s = 0; s < K; s++)
+        for (int j = 0; j < n; j++)
+            pooled[(size_t)s*n + j] = samples[s][j];
 
-    partial_sum(node_deltas.begin(), node_deltas.end(), rates.begin());
-
-    for (int i = 1; i < (int)sorted_nodes.size(); i++) {
-        accumulated_arg_length[i] = accumulated_arg_length[i-1]
-            + rates[i-1] * (local_times[sorted_nodes[i]->index] - local_times[sorted_nodes[i-1]->index]);
+    if (sorted_order.size() != m) {
+        sorted_order.resize(m);
+        for (size_t i = 0; i < m; i++) sorted_order[i] = i;
+        sort(sorted_order.begin(), sorted_order.end(),
+             [&pooled](size_t a, size_t b) { return pooled[a] < pooled[b]; });
     }
+
+    sorted_times.resize(m);
+    rates.resize(m);
+    accumulated_arg_length.assign(m, 0.0);
+    double r = 0;
+    for (size_t i = 0; i < m; i++) {
+        size_t idx = sorted_order[i];
+        sorted_times[i] = pooled[idx];
+        r += node_deltas[idx % n]/K;
+        rates[i] = r;
+    }
+    for (size_t i = 1; i < m; i++)
+        accumulated_arg_length[i] = accumulated_arg_length[i-1]
+            + rates[i-1]*(sorted_times[i] - sorted_times[i-1]);
 }
 
 // Partitions the time axis into num_bins equal-ARG-length windows
 void Scaler::compute_old_grid() {
-    expected_arg_length.resize(num_bins);
-    compute_accumulated_arg_length();
-
-    double unit_arg_length = accumulated_arg_length.back() / num_bins;
-    double partial_arg_length = 0;
-    int new_index = 0;
-    double rate = 0;
-    double residue = 0;
-
-    for (int i = 1; i <= num_bins; i++) {
-        partial_arg_length = accumulated_arg_length.back() * i / num_bins;
-        auto it = upper_bound(accumulated_arg_length.begin(), accumulated_arg_length.end(), partial_arg_length);
-        new_index = (int) distance(accumulated_arg_length.begin(), it);
-        new_index = min((int) sorted_nodes.size() - 1, new_index);
-        rate = rates[new_index - 1];
-        residue = accumulated_arg_length[new_index] - partial_arg_length;
-        residue = max(0.0, residue);
-        expected_arg_length[i-1] = unit_arg_length;
-        old_grid.push_back(local_times[sorted_nodes[new_index]->index] - residue / rate);
+    size_t m = sorted_times.size();
+    old_grid.assign(num_bins + 1, 0.0);
+    for (int b = 1; b <= num_bins; b++) {
+        double partial_arg_length = accumulated_arg_length.back()*b/num_bins;
+        auto it = upper_bound(accumulated_arg_length.begin(),
+                              accumulated_arg_length.end(), partial_arg_length);
+        size_t i = min(m - 1, (size_t)distance(accumulated_arg_length.begin(), it));
+        double residue = max(0.0, accumulated_arg_length[i] - partial_arg_length);
+        old_grid[b] = sorted_times[i] - residue/rates[i-1];
     }
-    old_grid.back() = nextafter(local_times[sorted_nodes.back()->index], INT_MAX);
-}
+    old_grid[num_bins] = nextafter(sorted_times[m-1], (double)INT_MAX);
+    for (int b = 1; b <= num_bins; b++)
+        old_grid[b] = max(old_grid[b], nextafter(old_grid[b-1], (double)INT_MAX));
 
-void Scaler::compute_new_grid(double theta) {
-    for (auto &x : observed_arg_length) {
-        x /= theta;
-    }
-    double base_time = 0;
-    double old_window_width = 0, scaling_factor = 0;
-    new_grid.reserve(old_grid.size());
-    for (int i = 1; i < (int)old_grid.size(); i++) {
-        old_window_width = old_grid[i] - old_grid[i-1];
-        scaling_factor = observed_arg_length[i-1] / expected_arg_length[i-1];
-        assert(!isnan(scaling_factor));
-        scaling_factors.push_back(scaling_factor);
-        base_time += old_window_width * scaling_factor;
-        new_grid.push_back(base_time);
-    }
-}
-
-void Scaler::map_mutations(DAG &dag) {
     observed_arg_length.assign(num_bins, 0.0);
+    expected_arg_length.assign(num_bins, accumulated_arg_length.back()/num_bins);
+}
+
+void Scaler::map_mutations(DAG &dag, const vector<double> &times) {
     int nb = (int)dag.branches.size();
     const vector<double> &og = old_grid;
     #pragma omp parallel num_threads(num_cores)
     {
         vector<double> local(num_bins, 0.0);
+        vector<double> slope(num_bins + 1, 0.0);
         #pragma omp for schedule(static)
         for (int bi = 0; bi < nb; bi++) {
             Branch *b = dag.branches[bi];
-            double lb = local_times[b->lower_node->index];
-            double ub = local_times[b->upper_node->index];
-            double w  = b->mutation_count;
-            auto it = upper_bound(og.begin(), og.end(), lb);
-            --it;
-            int idx = (int)(it - og.begin());
-            while (og[idx] < ub) {
-                double x = og[idx], y = og[idx+1];
-                double l = min(ub, y) - max(lb, x);
-                double p = (ub == lb) ? 1.0 : min(l / (ub - lb), 1.0);
-                local[idx] += w * p;
-                ++idx;
+            double lb = times[b->lower_node->index];
+            double ub = times[b->upper_node->index];
+            double w = b->mutation_count;
+            double l = ub - lb;
+            int x = (int)(upper_bound(og.begin(), og.end(), lb) - og.begin()) - 1;
+            int y = (int)(upper_bound(og.begin(), og.end(), ub) - og.begin()) - 1;
+            x = min(max(x, 0), num_bins - 1);
+            y = min(max(y, 0), num_bins - 1);
+            if (x == y) {
+                local[x] += w;
+                continue;
             }
+            double p = w/l;
+            local[x] += p*(og[x+1] - lb);
+            local[y] += p*(ub - og[y]);
+            slope[x+1] += p;
+            slope[y] -= p;
+        }
+        double r = 0;
+        for (int k = 0; k < num_bins; k++) {
+            r += slope[k];
+            local[k] += r*(og[k+1] - og[k]);
         }
         #pragma omp critical
         for (int k = 0; k < num_bins; k++)
@@ -119,43 +114,41 @@ void Scaler::map_mutations(DAG &dag) {
     }
 }
 
-void Scaler::rescale(DAG &dag, double theta) {
-    old_grid = {0};
-    new_grid = {0};
-    scaling_factors.clear();
+void Scaler::compute_new_grid(double theta) {
+    scaling_factors.assign(num_bins, 1.0);
+    new_grid.assign(num_bins + 1, 0.0);
+    for (int k = 0; k < num_bins; k++) {
+        scaling_factors[k] = observed_arg_length[k]/(theta*expected_arg_length[k]);
+        new_grid[k+1] = new_grid[k] + (old_grid[k+1] - old_grid[k])*scaling_factors[k];
+    }
+}
 
-    compute_deltas(dag);
+void Scaler::rescale(DAG &dag, vector<vector<double>> &samples, int subsample,
+                     double theta) {
+    int n_samples = (int)samples.size();
+    int K = min(subsample, n_samples);
+    vector<vector<double>> sub(K);
+    for (int i = 0; i < K; i++)
+        sub[i] = samples[(long long)i*n_samples/K];
+    compute_accumulated_arg_length(sub);
     compute_old_grid();
-    map_mutations(dag);
+    for (int i = 0; i < K; i++)
+        map_mutations(dag, sub[i]);
+    for (int k = 0; k < num_bins; k++)
+        observed_arg_length[k] /= K;
     compute_new_grid(theta);
+    #pragma omp parallel for schedule(static) num_threads(num_cores)
+    for (int s = 0; s < n_samples; s++)
+        apply_scaling_factors(dag, samples[s]);
+}
 
-    int k = 0;
-    int node_index = 0;
-    double t;
-
-    for (int i = 0; i < (int)sorted_nodes.size(); i++) {
-        while (local_times[sorted_nodes[i]->index] > old_grid[k+1]) {
-            k++;
-        }
-        node_index = sorted_nodes[i]->index;
-        if (!sorted_nodes[i]->is_sample) {
-            t = scaling_factors[k] * (local_times[node_index] - old_grid[k]) + new_grid[k];
-            local_times[node_index] = t;
-        }
+void Scaler::apply_scaling_factors(DAG &dag, vector<double> &times) const {
+    int n = (int)dag.nodes.size();
+    const vector<double> &og = old_grid;
+    for (int i = 0; i < n; i++) {
+        if (dag.nodes[i]->is_sample) continue;
+        int k = (int)(upper_bound(og.begin(), og.end(), times[i]) - og.begin()) - 1;
+        k = min(max(k, 0), num_bins - 1);
+        times[i] = new_grid[k] + scaling_factors[k]*(times[i] - og[k]);
     }
-
-    for (int i = 0; i < (int)dag.nodes.size(); i++) {
-        if (!dag.nodes[i]->is_sample) {
-            double lb = dag.lower_bound(i, local_times);
-            if (local_times[i] <= lb) {
-                local_times[i] = lb + 1e-6;
-            }
-        }
-    }
-
-    sort(sorted_nodes.begin(), sorted_nodes.end(), [this](const Node* a, const Node* b) {
-        if (local_times[a->index] != local_times[b->index])
-            return local_times[a->index] < local_times[b->index];
-        return a->index < b->index;
-    });
 }

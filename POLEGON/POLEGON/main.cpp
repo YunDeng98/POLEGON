@@ -23,6 +23,7 @@ int main(int argc, const char * argv[]) {
     int spacing = -1;           // thinning interval
     int scaling_rep = 5;        // number of ARG rescaling rounds
     int scaling_bin = 100;      // number of time bins used by the Scaler
+    int rescaling_subsample = 10; // number of posterior samples used to estimate the shared rescaling grid
     int num_cores = 1;
     string input_prefix = "", output_prefix = "";
     int seed = 42;              // random seed
@@ -95,6 +96,15 @@ int main(int argc, const char * argv[]) {
             try { scaling_bin = stoi(argv[++i]); }
             catch (const invalid_argument&) {
                 cerr << "Error: -scaling_bin flag expects a number. " << endl; exit(1);
+            }
+        }
+        else if (arg == "-rescaling_subsample") {
+            if (i + 1 >= argc || argv[i+1][0] == '-') {
+                cerr << "Error: -rescaling_subsample flag cannot be empty. " << endl; exit(1);
+            }
+            try { rescaling_subsample = stoi(argv[++i]); }
+            catch (const invalid_argument&) {
+                cerr << "Error: -rescaling_subsample flag expects a number. " << endl; exit(1);
             }
         }
         else if (arg == "-input") {
@@ -243,43 +253,57 @@ int main(int argc, const char * argv[]) {
         ofstream samples_file(output_prefix + "_node_samples.txt");
         vector<double> sums;
         if (posterior_mean) sums.assign(n_nodes, 0.0);
+        vector<vector<double>> subsample;
         {
             ifstream raw_in(raw_file);
             ofstream unrescaled_out(unrescaled_file);
-            vector<vector<double>> batch(dag.num_cores, vector<double>(n_nodes));
-            int done_count = 0;
-            while (done_count < num_samples) {
-                int actual = min(dag.num_cores, num_samples - done_count);
-                for (int s = 0; s < actual; s++)
-                    for (int j = 0; j < n_nodes; j++)
-                        raw_in >> batch[s][j];
-                for (int s = 0; s < actual; s++) {
-                    for (int j = 0; j < n_nodes; j++)
-                        unrescaled_out << std::setprecision(std::numeric_limits<double>::max_digits10)
-                                       << dag.output_time(j, (batch[s][j] + dag.time_origin) * Ne * g) << " ";
-                    unrescaled_out << "\n";
+            vector<double> row(n_nodes);
+            int K = min(rescaling_subsample, num_samples);
+            int subsample_spacing = max(1, num_samples/K);
+            for (int s = 0; s < num_samples; s++) {
+                for (int j = 0; j < n_nodes; j++)
+                    raw_in >> row[j];
+                for (int j = 0; j < n_nodes; j++)
+                    unrescaled_out << std::setprecision(std::numeric_limits<double>::max_digits10)
+                                   << dag.output_time(j, (row[j] + dag.time_origin) * Ne * g) << " ";
+                unrescaled_out << "\n";
+                if (s % subsample_spacing == 0 && (int)subsample.size() < K) subsample.push_back(row);
+            }
+        }
+
+        vector<Scaler> scalers;
+        {
+            Scaler scaler;
+            scaler.num_bins = scaling_bin;
+            scaler.num_cores = dag.num_cores;
+            scaler.compute_deltas(dag);
+            for (int k = 0; k < scaling_rep; k++) {
+                scaler.rescale(dag, subsample, (int)subsample.size(), Ne * m);
+                Scaler round;
+                round.num_bins = scaling_bin;
+                round.old_grid = scaler.old_grid;
+                round.new_grid = scaler.new_grid;
+                round.scaling_factors = scaler.scaling_factors;
+                scalers.push_back(round);
+                cout << "ARG Rescaling: " << k + 1 << "/" << scaling_rep << endl;
+            }
+        }
+
+        {
+            ifstream raw_in(raw_file);
+            vector<double> row(n_nodes);
+            for (int s = 0; s < num_samples; s++) {
+                for (int j = 0; j < n_nodes; j++)
+                    raw_in >> row[j];
+                for (Scaler &st : scalers)
+                    st.apply_scaling_factors(dag, row);
+                for (int j = 0; j < n_nodes; j++) {
+                    double t = dag.output_time(j, (row[j] + dag.time_origin) * Ne * g);
+                    samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
+                                 << t << " ";
+                    if (posterior_mean) sums[j] += t;
                 }
-                #pragma omp parallel for schedule(dynamic,1) num_threads(actual)
-                for (int s = 0; s < actual; s++) {
-                    Scaler scaler;
-                    scaler.num_bins = scaling_bin;
-                    scaler.local_times = batch[s];
-                    for (int k = 0; k < scaling_rep; k++)
-                        scaler.rescale(dag, Ne * m);
-                    batch[s] = scaler.local_times;
-                }
-                for (int s = 0; s < actual; s++) {
-                    for (int j = 0; j < n_nodes; j++) {
-                        double t = dag.output_time(j, (batch[s][j] + dag.time_origin) * Ne * g);
-                        samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
-                                     << t << " ";
-                        if (posterior_mean) sums[j] += t;
-                    }
-                    samples_file << "\n";
-                    done_count++;
-                    if (done_count % 10 == 0 || done_count == num_samples)
-                        cout << "ARG Rescaling: " << done_count << "/" << num_samples << endl;
-                }
+                samples_file << "\n";
             }
         }
         samples_file.close();
@@ -316,22 +340,13 @@ int main(int argc, const char * argv[]) {
         return 0;
     }
 
-    int done_count = 0;
-    #pragma omp parallel for schedule(dynamic,1) num_threads(dag.num_cores)
-    for (int s = 0; s < num_samples; s++) {
-        Scaler scaler;
-        scaler.num_bins = scaling_bin;
-        scaler.local_times = all_raw[s];
-        for (int k = 0; k < scaling_rep; k++)
-            scaler.rescale(dag, Ne * m);
-        all_raw[s] = scaler.local_times;
-        int cnt;
-        #pragma omp atomic capture
-        cnt = ++done_count;
-        if (cnt % 10 == 0 || cnt == num_samples) {
-            #pragma omp critical
-            cout << "ARG Rescaling: " << cnt << "/" << num_samples << endl;
-        }
+    Scaler scaler;
+    scaler.num_bins = scaling_bin;
+    scaler.num_cores = dag.num_cores;
+    scaler.compute_deltas(dag);
+    for (int k = 0; k < scaling_rep; k++) {
+        scaler.rescale(dag, all_raw, rescaling_subsample, Ne * m);
+        cout << "ARG Rescaling: " << k + 1 << "/" << scaling_rep << endl;
     }
 
     ofstream samples_file(output_prefix + "_node_samples.txt");
