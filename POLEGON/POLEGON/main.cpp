@@ -23,7 +23,7 @@ int main(int argc, const char * argv[]) {
     int spacing = -1;           // thinning interval
     int scaling_rep = 5;        // number of ARG rescaling rounds
     int scaling_bin = 100;      // number of time bins used by the Scaler
-    int rescaling_subsample = 10; // number of posterior samples used to estimate the shared rescaling grid
+    int scaling_subsample = 10; // number of posterior samples used to estimate the shared rescaling grid
     int num_cores = 1;
     string input_prefix = "", output_prefix = "";
     int seed = 42;              // random seed
@@ -98,13 +98,13 @@ int main(int argc, const char * argv[]) {
                 cerr << "Error: -scaling_bin flag expects a number. " << endl; exit(1);
             }
         }
-        else if (arg == "-rescaling_subsample") {
+        else if (arg == "-scaling_subsample") {
             if (i + 1 >= argc || argv[i+1][0] == '-') {
-                cerr << "Error: -rescaling_subsample flag cannot be empty. " << endl; exit(1);
+                cerr << "Error: -scaling_subsample flag cannot be empty. " << endl; exit(1);
             }
-            try { rescaling_subsample = stoi(argv[++i]); }
+            try { scaling_subsample = stoi(argv[++i]); }
             catch (const invalid_argument&) {
-                cerr << "Error: -rescaling_subsample flag expects a number. " << endl; exit(1);
+                cerr << "Error: -scaling_subsample flag expects a number. " << endl; exit(1);
             }
         }
         else if (arg == "-input") {
@@ -258,7 +258,7 @@ int main(int argc, const char * argv[]) {
             ifstream raw_in(raw_file);
             ofstream unrescaled_out(unrescaled_file);
             vector<double> row(n_nodes);
-            int K = min(rescaling_subsample, num_samples);
+            int K = min(scaling_subsample, num_samples);
             int subsample_spacing = max(1, num_samples/K);
             for (int s = 0; s < num_samples; s++) {
                 for (int j = 0; j < n_nodes; j++)
@@ -345,7 +345,7 @@ int main(int argc, const char * argv[]) {
     scaler.num_cores = dag.num_cores;
     scaler.compute_deltas(dag);
     for (int k = 0; k < scaling_rep; k++) {
-        scaler.rescale(dag, all_raw, rescaling_subsample, Ne * m);
+        scaler.rescale(dag, all_raw, scaling_subsample, Ne * m);
         cout << "ARG Rescaling: " << k + 1 << "/" << scaling_rep << endl;
     }
 
