@@ -201,6 +201,7 @@ int main(int argc, const char * argv[]) {
     dag.map_mutations(mut_file);
 
     dag.compute_root_lambda();
+    dag.compute_non_root_lambda();
     dag.compute_coloring();
     init_random_streams(seed, dag.num_streams);
 

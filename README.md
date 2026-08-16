@@ -25,8 +25,8 @@ The following details to these arguments can be displayed if you simply type `po
 |**-m**|conditionally required|per base pair per generation mutation rate.|
 |**-g**|conditionally required|generation time in years. Required when `-tip_ages` is provided.|
 |**-m_map**|conditionally required|mutation rate map for the region.|
-|**-burn_in**|optional|the number of MCMC burn-in iterations discarded. Default: 100|
-|**-n_samples**|optional|the number of posterior ARG samples. Default: 100|
+|**-burn_in**|optional|the number of MCMC burn-in iterations discarded. Default: 2500|
+|**-n_samples**|optional|the number of posterior ARG samples. Default: 1000|
 |**-thin**|optional|the number of thinning iterations in MCMC. Default: 10|
 |**-scaling_rep**|optional|the number of ARG rescaling steps after MCMC. Default: 5|
 |**-scaling_bin**|optional|the number of time bins used for ARG rescaling. Default: 100|

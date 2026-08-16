@@ -3,7 +3,7 @@
 //  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
-//  Updated by Wonseop Lim on 03/21/26.
+//  Updated by Wonseop Lim on 08/15/26.
 //
 
 #include <vector>
@@ -26,10 +26,5 @@ void bind_random_stream(int index) {
 }
 
 double uniform_random() {
-    std::mt19937 &engine = random_streams[active_stream];
-    double q = uniform_distribution(engine);
-    if (q < 1e-5 or q > 1 - 1e-5) {
-        q = uniform_distribution(engine);
-    }
-    return q;
+    return uniform_distribution(random_streams[active_stream]);
 }

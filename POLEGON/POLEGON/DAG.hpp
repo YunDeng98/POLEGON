@@ -58,6 +58,7 @@ public:
     vector<double> child_mut_rate   = {};
     vector<double> child_span       = {};
     vector<double> root_lambda      = {};
+    vector<double> non_root_lambda  = {};
 
     int updates = 0;
 
@@ -68,6 +69,7 @@ public:
     void map_mutations(string mut_file);
     void compute_mutation_rates(double theta);
     void compute_root_lambda();
+    void compute_non_root_lambda();
     void apply_tip_ages(string tip_ages_file, double gen_time);
     void compute_coloring();
     void no_prior_MCMC();
@@ -91,7 +93,7 @@ public:
     void load_branches(string branch_file);
     void load_branches(string branch_file, Mutation_map &mm);
     Branch *search_branch(Node *n1, Node *n2);
-    double random_non_root_time(double t0, double lb, double ub);
+    double random_non_root_time(int i, double t0, double lb, double ub);
     double random_root_time(int i, double lb);
     double median(vector<double> &values);
 };

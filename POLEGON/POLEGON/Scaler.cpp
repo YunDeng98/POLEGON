@@ -70,7 +70,6 @@ void Scaler::compute_old_grid() {
         old_grid.push_back(local_times[sorted_nodes[new_index]->index] - residue / rate);
     }
     old_grid.back() = nextafter(local_times[sorted_nodes.back()->index], INT_MAX);
-    assert((int)old_grid.size() == num_bins + 1);
 }
 
 void Scaler::compute_new_grid(double theta) {

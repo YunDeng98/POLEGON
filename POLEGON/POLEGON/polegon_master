@@ -443,10 +443,10 @@ def main():
                         help='Per-bp per-generation mutation rate.')
     parser.add_argument('-m_map', type=str, required=False,
                         help='Spatially varying mutation rate map (columns: start end rate).')
-    parser.add_argument('-burn_in', type=float, required=False, default=100,
-                        help='MCMC burn-in (default: 100).')
-    parser.add_argument('-n_samples', type=int, required=False, default=100,
-                        help='Posterior MCMC samples (default: 100).')
+    parser.add_argument('-burn_in', type=float, required=False, default=2500,
+                        help='MCMC burn-in (default: 2500).')
+    parser.add_argument('-n_samples', type=int, required=False, default=1000,
+                        help='Posterior MCMC samples (default: 1000).')
     parser.add_argument('-scaling_rep', type=int, required=False, default=5,
                         help='ARG rescaling rounds (default: 5).')
     parser.add_argument('-scaling_bin', type=int, required=False, default=100,

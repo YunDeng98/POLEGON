@@ -56,6 +56,22 @@ void DAG::compute_mutation_rates(double theta) {
     }
 }
 
+void DAG::compute_non_root_lambda() {
+    int n = (int)nodes.size();
+    non_root_lambda.assign(n, 0.0);
+    for (int i = 0; i < n; i++) {
+        if (nodes[i]->is_sample or parent_start[i] == parent_start[i+1]) continue;
+        double d = 0, s = 0;
+        for (int k = child_start[i]; k < child_start[i+1]; k++) {
+            d += child_data[k]->mutation_count;
+            s += child_data[k]->mutation_rate;
+        }
+        for (int k = parent_start[i]; k < parent_start[i+1]; k++)
+            s -= parent_data[k]->mutation_rate;
+        non_root_lambda[i] = (d + 1)/s;
+    }
+}
+
 void DAG::compute_root_lambda() {
     int n = (int)nodes.size();
     root_lambda.assign(n, 0.0);
@@ -377,6 +393,8 @@ double DAG::no_prior_acceptance_ratio(int i, double t, double lb, double ub) {
     double q = fast_acceptance_ratio(i, t0, t);
     if (ub == INT_MAX) {
         q *= exp((t - t0)/root_lambda[i]);
+    } else {
+        q *= exp((t - t0)/non_root_lambda[i]);
     }
     return q;
 }
@@ -400,7 +418,7 @@ void DAG::no_prior_propose(int i) {
     double t0 = nodes[i]->time;
     double t = 0;
     if (ub != INT_MAX) {
-        t = random_non_root_time(t0, lb, ub);
+        t = random_non_root_time(i, t0, lb, ub);
     } else {
         t = random_root_time(i, lb);
     }
@@ -582,18 +600,16 @@ Branch *DAG::search_branch(Node *n1, Node *n2) {
     return nullptr;
 }
 
-double DAG::random_non_root_time(double t0, double lb, double ub) {
+// Draws Exp(1/non_root_lambda) above lb, truncated at ub
+double DAG::random_non_root_time(int i, double t0, double lb, double ub) {
     assert(ub != INT_MAX);
-    double t = lb + uniform_random()*(ub - lb);
-    if (t <= lb or t >= ub) {
-        t = lb + uniform_random()*(ub - lb);
-    }
-    return t;
+    double lam = non_root_lambda[i];
+    return lb - lam*log1p(-uniform_random()*(1 - exp(-(ub - lb)/lam)));
 }
 
 // Draws Exp(1/root_lambda) above lb
 double DAG::random_root_time(int i, double lb) {
-    return lb - root_lambda[i]*log(uniform_random());
+    return lb - root_lambda[i]*log1p(-uniform_random());
 }
 
 double DAG::median(std::vector<double>& vec) {
