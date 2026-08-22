@@ -119,17 +119,21 @@ void DAG::apply_tip_ages(string tip_ages_file, double gen_time) {
             nodes[i]->time = tip_ages_coal[s++] - min_age;
         }
     }
-    vector<int> internal_by_time;
-    for (int i = 0; i < (int)nodes.size(); i++)
-        if (!nodes[i]->is_sample) internal_by_time.push_back(i);
-    sort(internal_by_time.begin(), internal_by_time.end(),
-         [this](int a, int b) { return nodes[a]->time < nodes[b]->time; });
+    compute_internal_by_time();
     for (int i : internal_by_time) {
         double lb = lower_bound(i);
         if (nodes[i]->time <= lb) {
             nodes[i]->time = lb + 1e-6;
         }
     }
+}
+
+void DAG::compute_internal_by_time() {
+    internal_by_time.clear();
+    for (int i = 0; i < (int)nodes.size(); i++)
+        if (!nodes[i]->is_sample) internal_by_time.push_back(i);
+    sort(internal_by_time.begin(), internal_by_time.end(),
+         [this](int a, int b) { return nodes[a]->time < nodes[b]->time; });
 }
 
 // Chromatic decomposition (Matula & Beck 1983)

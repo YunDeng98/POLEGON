@@ -78,6 +78,7 @@ void Scaler::compute_old_grid() {
 void Scaler::map_mutations(DAG &dag, const vector<double> &times) {
     int nb = (int)dag.branches.size();
     const vector<double> &og = old_grid;
+    vector<vector<double>> partial(num_cores, vector<double>(num_bins, 0.0));
     #pragma omp parallel num_threads(num_cores)
     {
         vector<double> local(num_bins, 0.0);
@@ -108,10 +109,11 @@ void Scaler::map_mutations(DAG &dag, const vector<double> &times) {
             r += slope[k];
             local[k] += r*(og[k+1] - og[k]);
         }
-        #pragma omp critical
-        for (int k = 0; k < num_bins; k++)
-            observed_arg_length[k] += local[k];
+        partial[omp_get_thread_num()] = local;
     }
+    for (int t = 0; t < num_cores; t++)
+        for (int k = 0; k < num_bins; k++)
+            observed_arg_length[k] += partial[t][k];
 }
 
 void Scaler::compute_new_grid(double theta) {
@@ -150,5 +152,9 @@ void Scaler::apply_scaling_factors(DAG &dag, vector<double> &times) const {
         int k = (int)(upper_bound(og.begin(), og.end(), times[i]) - og.begin()) - 1;
         k = min(max(k, 0), num_bins - 1);
         times[i] = new_grid[k] + scaling_factors[k]*(times[i] - og[k]);
+    }
+    for (int i : dag.internal_by_time) {
+        double lb = dag.lower_bound(i, times);
+        if (times[i] <= lb) times[i] = lb + 1e-6;
     }
 }

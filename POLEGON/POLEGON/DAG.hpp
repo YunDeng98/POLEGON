@@ -46,6 +46,7 @@ public:
     vector<int> child_start = {};
 
     vector<int> perm_cache = {};
+    vector<int> internal_by_time = {};
     vector<vector<int>> color_classes = {};
 
     vector<double> sample_output_ages = {};
@@ -71,6 +72,7 @@ public:
     void compute_root_lambda();
     void compute_non_root_lambda();
     void apply_tip_ages(string tip_ages_file, double gen_time);
+    void compute_internal_by_time();
     void compute_coloring();
     void no_prior_MCMC();
     void posterior_average(string samples_file, string output_file);
