@@ -1,8 +1,9 @@
 //
 //  Scaler.hpp
-//  arg_branch_length
+//  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
+//  Modified by Wonseop Lim on 08/15/26.
 //
 
 #ifndef Scaler_hpp
@@ -14,37 +15,31 @@
 class Scaler {
 
 public:
-    
-    int num_windows = 100;
-    
-    vector<Node *> sorted_nodes = {}; // nodes sorted in the order of time
-    vector<double> node_deltas = {}; // nodes rate changes in the same sorted order
+
+    int num_bins = 100;
+    int num_cores = 1;
+
+    vector<double> node_deltas = {};
+    vector<size_t> sorted_order = {};
+    vector<double> sorted_times = {};
     vector<double> rates = {};
     vector<double> accumulated_arg_length = {};
-    vector<double> old_grid = {0};
-    vector<double> new_grid = {0};
+    vector<double> old_grid = {};
+    vector<double> new_grid = {};
     vector<double> expected_arg_length = {};
     vector<double> observed_arg_length = {};
     vector<double> scaling_factors = {};
-    
+
     Scaler();
-    
+
     void compute_deltas(DAG &dag);
-    
-    void compute_accumulated_arg_length();
-    
+    void compute_accumulated_arg_length(const vector<vector<double>> &samples);
     void compute_old_grid();
-    
     void compute_new_grid(double theta);
-    
-    void map_mutations(DAG &dag);
-    
-    void add_mutation(double w, double lb, double ub);
-    
-    void rescale(DAG &dag, double theta);
-    
-    // void all_sample_rescale(DAG &dag, double theta);
-    
+    void map_mutations(DAG &dag, const vector<double> &times);
+    void apply_scaling_factors(DAG &dag, vector<double> &times) const;
+    void rescale(DAG &dag, vector<vector<double>> &samples, int subsample, double theta);
+
 };
 
 #endif /* Scaler_hpp */

@@ -1,6 +1,6 @@
 //
 //  Distribution.cpp
-//  arg_branch_length
+//  POLEGON
 //
 //  Created by Yun Deng on 10/31/23.
 //
@@ -13,10 +13,6 @@ Distribution::Distribution(int n) {
 
 void Distribution::load_distribution(string filename) {
     ifstream fin(filename);
-    if (!fin.good()) {
-        cerr << "input file not found" << endl;
-        exit(1);
-    }
     double x;
     double y;
     double r;
@@ -44,7 +40,7 @@ double Distribution::survival(double x) {
         return 0;
     }
     auto it = upper_bound(times.begin(), times.end(), x);
-    int index = (int) (it - times.begin());
+    int index = max(1, (int) (it - times.begin()));
     double rate = rates[index - 1];
     double delta = x - times[index - 1];
     double prop = exp(-rate * delta);
@@ -64,5 +60,3 @@ double Distribution::inverse_survival(double q) {
     double x = times[index - 1] + delta;
     return x;
 }
-
-
