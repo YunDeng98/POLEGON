@@ -7,6 +7,7 @@
 //
 
 #include <iostream>
+#include <charconv>
 #include <cstdio>
 #include <omp.h>
 #include "DAG.hpp"
@@ -353,14 +354,26 @@ int main(int argc, const char * argv[]) {
     ofstream samples_file(output_prefix + "_node_samples.txt");
     vector<double> sums;
     if (posterior_mean) sums.assign(n_nodes, 0.0);
-    for (int i = 0; i < num_samples; i++) {
-        for (int j = 0; j < n_nodes; j++) {
-            double t = dag.output_time(j, (all_raw[i][j] + dag.time_origin) * Ne * g);
-            samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
-                         << t << " ";
-            if (posterior_mean) sums[j] += t;
+    {
+        string out;
+        out.reserve(1 << 22);
+        char buf[64];
+        for (int i = 0; i < num_samples; i++) {
+            for (int j = 0; j < n_nodes; j++) {
+                double t = dag.output_time(j, (all_raw[i][j] + dag.time_origin) * Ne * g);
+                auto r = std::to_chars(buf, buf + sizeof buf, t, std::chars_format::general,
+                                       std::numeric_limits<double>::max_digits10);
+                out.append(buf, r.ptr - buf);
+                out.push_back(' ');
+                if (posterior_mean) sums[j] += t;
+            }
+            out.push_back('\n');
+            if (out.size() >= (1 << 21)) {
+                samples_file.write(out.data(), out.size());
+                out.clear();
+            }
         }
-        samples_file << "\n";
+        samples_file.write(out.data(), out.size());
     }
     samples_file.close();
     
