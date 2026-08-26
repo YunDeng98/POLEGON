@@ -17,7 +17,7 @@ void Mutation_map::load_map(string mut_map_file) {
     }
     mutation_distances.push_back(0);
     double left;
-    double right;
+    double right = 0;
     double rate;
     double mut_dist;
     while (fin >> left >> right >> rate) {
@@ -25,16 +25,18 @@ void Mutation_map::load_map(string mut_map_file) {
         mut_dist = mutation_distances.back() + rate*(right - left);
         mutation_distances.push_back(mut_dist);
     }
+    if (coordinates.empty()) {
+        cerr << "mutation map file has no intervals: " << mut_map_file << endl;
+        exit(1);
+    }
     sequence_length = right;
     coordinates.push_back(sequence_length);
 }
 
 int Mutation_map::find_index(double x) {
     auto it = upper_bound(coordinates.begin(), coordinates.end(), x);
-    it--;
-    int index = (int) distance(coordinates.begin(), it);
-    assert(index >= 0 and index <= coordinates.size() - 1);
-    return index;
+    int index = (int) distance(coordinates.begin(), it) - 1;
+    return min(max(index, 0), (int) coordinates.size() - 2);
 }
 
 double Mutation_map::mutation_distance(double x) {

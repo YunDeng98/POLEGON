@@ -42,7 +42,7 @@ void DAG::map_mutations(string mut_file) {
     Branch *b;
     while (fin >> pos >> n1 >> n2 >> s) {
         if (n2 >= 0) {
-            ln = nodes[n1];
+            ln = nodes[(int) n1];
             un = nodes[(int) n2];
             b = search_branch(ln, un);
             b->mutation_count += 1;
@@ -358,8 +358,8 @@ double DAG::fast_acceptance_ratio(int i, double t0, double t1) {
         double mut_rate = parent_mut_rate[k];
         double rate_0   = (upper_t - t0) * mut_rate;
         double rate_1   = (upper_t - t1) * mut_rate;
-        if (rate_0 > 0) { w0 += count*log(rate_0); w0 -= rate_0; } else { w0 = 0; }
-        if (rate_1 > 0) { w1 += count*log(rate_1); w1 -= rate_1; } else { w1 = 0; }
+        w0 += count*log(rate_0); w0 -= rate_0;
+        w1 += count*log(rate_1); w1 -= rate_1;
     }
     for (int k = child_start[i]; k < child_start[i+1]; k++) {
         double lower_t  = nodes[child_lower_idx[k]]->time;
@@ -367,8 +367,8 @@ double DAG::fast_acceptance_ratio(int i, double t0, double t1) {
         double mut_rate = child_mut_rate[k];
         double rate_0   = (t0 - lower_t) * mut_rate;
         double rate_1   = (t1 - lower_t) * mut_rate;
-        if (rate_0 > 0) { w0 += count*log(rate_0); w0 -= rate_0; } else { w0 = 0; }
-        if (rate_1 > 0) { w1 += count*log(rate_1); w1 -= rate_1; } else { w1 = 0; }
+        w0 += count*log(rate_0); w0 -= rate_0;
+        w1 += count*log(rate_1); w1 -= rate_1;
     }
     return exp(w1 - w0);
 }
@@ -626,8 +626,9 @@ Branch *DAG::search_branch(Node *n1, Node *n2) {
             u = m - 1;
         }
     }
-    cout << "branch search failed!" << endl;
-    return nullptr;
+    cerr << "Error: mutations file refers to branch " << n1->index << " -> "
+         << n2->index << ", which is not in the branches file" << endl;
+    exit(1);
 }
 
 // Draws Exp(1/non_root_lambda) above lb, truncated at ub
@@ -647,5 +648,5 @@ double DAG::median(std::vector<double>& vec) {
     assert(size > 0);
     vector<double> temp(vec);
     nth_element(temp.begin(), temp.begin() + size/2, temp.end());
-    return vec[size/2];
+    return temp[size/2];
 }

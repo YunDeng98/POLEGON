@@ -44,7 +44,7 @@ double Distribution::survival(double x) {
         return 0;
     }
     auto it = upper_bound(times.begin(), times.end(), x);
-    int index = (int) (it - times.begin());
+    int index = max(1, (int) (it - times.begin()));
     double rate = rates[index - 1];
     double delta = x - times[index - 1];
     double prop = exp(-rate * delta);
