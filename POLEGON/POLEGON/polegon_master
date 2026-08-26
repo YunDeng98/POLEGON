@@ -476,7 +476,7 @@ def main():
     parser.add_argument('-no_mean', action='store_true',
                         help='Skip computing and writing the posterior mean.')
     parser.add_argument('-memory_safe', action='store_true',
-                        help='Stream unrescaled samples to disk during MCMC and rescale in batches. Uses O(cores x nodes) memory instead of O(samples x nodes).')
+                        help='Stream unrescaled samples to disk during MCMC and rescale in batches. Uses O(scaling_subsample x nodes) memory instead of O(samples x nodes).')
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
