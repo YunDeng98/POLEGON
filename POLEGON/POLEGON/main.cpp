@@ -16,6 +16,21 @@
 #include "Mutation_map.hpp"
 #include "random_utils.hpp"
 
+static void append_double(string &out, double v, char separator) {
+    char buf[64];
+    auto r = std::to_chars(buf, buf + sizeof buf, v, std::chars_format::general,
+                           std::numeric_limits<double>::max_digits10);
+    out.append(buf, r.ptr - buf);
+    out.push_back(separator);
+}
+
+static void flush_if_large(ofstream &file, string &out) {
+    if (out.size() >= (1 << 21)) {
+        file.write(out.data(), out.size());
+        out.clear();
+    }
+}
+
 int main(int argc, const char * argv[]) {
     double m = -1;              // mutation rate per generation per bp
     double g = -1;              // generation time in years; -1 = not set (defaults to 1 if unused)
@@ -234,6 +249,8 @@ int main(int argc, const char * argv[]) {
                                            : output_prefix + "_unrescaled_node_samples.tmp";
         {
             ofstream raw_out(raw_file);
+            string out;
+            out.reserve(1 << 22);
             for (int i = 0; i < num_samples; i++) {
                 for (int j = 0; j < spacing; j++)
                     dag.no_prior_MCMC();
@@ -244,11 +261,12 @@ int main(int argc, const char * argv[]) {
                     double t = scaling_rep == 0
                              ? dag.output_time(j, (dag.nodes[j]->time + dag.time_origin) * Ne * g)
                              : dag.nodes[j]->time;
-                    raw_out << std::setprecision(std::numeric_limits<double>::max_digits10)
-                            << t << " ";
+                    append_double(out, t, ' ');
                 }
-                raw_out << "\n";
+                out.push_back('\n');
+                flush_if_large(raw_out, out);
             }
+            raw_out.write(out.data(), out.size());
         }
         if (scaling_rep == 0) return 0;
 
@@ -259,6 +277,8 @@ int main(int argc, const char * argv[]) {
         {
             ifstream raw_in(raw_file);
             ofstream unrescaled_out(unrescaled_file);
+            string out;
+            out.reserve(1 << 22);
             vector<double> row(n_nodes);
             int K = min(scaling_subsample, num_samples);
             int subsample_spacing = max(1, num_samples/K);
@@ -266,11 +286,12 @@ int main(int argc, const char * argv[]) {
                 for (int j = 0; j < n_nodes; j++)
                     raw_in >> row[j];
                 for (int j = 0; j < n_nodes; j++)
-                    unrescaled_out << std::setprecision(std::numeric_limits<double>::max_digits10)
-                                   << dag.output_time(j, (row[j] + dag.time_origin) * Ne * g) << " ";
-                unrescaled_out << "\n";
+                    append_double(out, dag.output_time(j, (row[j] + dag.time_origin) * Ne * g), ' ');
+                out.push_back('\n');
+                flush_if_large(unrescaled_out, out);
                 if (s % subsample_spacing == 0 && (int)subsample.size() < K) subsample.push_back(row);
             }
+            unrescaled_out.write(out.data(), out.size());
         }
 
         vector<Scaler> scalers;
@@ -293,6 +314,8 @@ int main(int argc, const char * argv[]) {
 
         {
             ifstream raw_in(raw_file);
+            string out;
+            out.reserve(1 << 22);
             vector<double> row(n_nodes);
             for (int s = 0; s < num_samples; s++) {
                 for (int j = 0; j < n_nodes; j++)
@@ -301,20 +324,22 @@ int main(int argc, const char * argv[]) {
                     st.apply_scaling_factors(dag, row);
                 for (int j = 0; j < n_nodes; j++) {
                     double t = dag.output_time(j, (row[j] + dag.time_origin) * Ne * g);
-                    samples_file << std::setprecision(std::numeric_limits<double>::max_digits10)
-                                 << t << " ";
+                    append_double(out, t, ' ');
                     if (posterior_mean) sums[j] += t;
                 }
-                samples_file << "\n";
+                out.push_back('\n');
+                flush_if_large(samples_file, out);
             }
+            samples_file.write(out.data(), out.size());
         }
         samples_file.close();
         std::remove(raw_file.c_str());
         if (posterior_mean) {
             ofstream fout(input_prefix + "_posterior_mean_nodes.txt");
+            string out;
             for (int j = 0; j < n_nodes; j++)
-                fout << std::setprecision(std::numeric_limits<double>::max_digits10)
-                     << dag.output_time(j, sums[j] / num_samples) << "\n";
+                append_double(out, dag.output_time(j, sums[j] / num_samples), '\n');
+            fout.write(out.data(), out.size());
         }
         return 0;
     }
@@ -333,12 +358,15 @@ int main(int argc, const char * argv[]) {
 
     if (scaling_rep == 0) {
         ofstream raw_out(output_prefix + "_unrescaled_node_samples.txt");
+        string out;
+        out.reserve(1 << 22);
         for (int i = 0; i < num_samples; i++) {
             for (int j = 0; j < n_nodes; j++)
-                raw_out << std::setprecision(std::numeric_limits<double>::max_digits10)
-                        << dag.output_time(j, (all_raw[i][j] + dag.time_origin) * Ne * g) << " ";
-            raw_out << "\n";
+                append_double(out, dag.output_time(j, (all_raw[i][j] + dag.time_origin) * Ne * g), ' ');
+            out.push_back('\n');
+            flush_if_large(raw_out, out);
         }
+        raw_out.write(out.data(), out.size());
         return 0;
     }
 
@@ -357,21 +385,14 @@ int main(int argc, const char * argv[]) {
     {
         string out;
         out.reserve(1 << 22);
-        char buf[64];
         for (int i = 0; i < num_samples; i++) {
             for (int j = 0; j < n_nodes; j++) {
                 double t = dag.output_time(j, (all_raw[i][j] + dag.time_origin) * Ne * g);
-                auto r = std::to_chars(buf, buf + sizeof buf, t, std::chars_format::general,
-                                       std::numeric_limits<double>::max_digits10);
-                out.append(buf, r.ptr - buf);
-                out.push_back(' ');
+                append_double(out, t, ' ');
                 if (posterior_mean) sums[j] += t;
             }
             out.push_back('\n');
-            if (out.size() >= (1 << 21)) {
-                samples_file.write(out.data(), out.size());
-                out.clear();
-            }
+            flush_if_large(samples_file, out);
         }
         samples_file.write(out.data(), out.size());
     }
@@ -380,9 +401,10 @@ int main(int argc, const char * argv[]) {
     if (posterior_mean) {
         string new_node_file = input_prefix + "_posterior_mean_nodes.txt";
         ofstream fout(new_node_file);
+        string out;
         for (int j = 0; j < (int)dag.nodes.size(); j++)
-            fout << std::setprecision(std::numeric_limits<double>::max_digits10)
-                 << dag.output_time(j, sums[j] / num_samples) << "\n";
+            append_double(out, dag.output_time(j, sums[j] / num_samples), '\n');
+        fout.write(out.data(), out.size());
         fout.close();
     }
 

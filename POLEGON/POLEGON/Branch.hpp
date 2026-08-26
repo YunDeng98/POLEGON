@@ -35,7 +35,6 @@ struct compare_branch {
         } else if (b1->lower_node->index != b2->lower_node->index) {
             return b1->lower_node->index < b2->lower_node->index;
         } else {
-            assert(b1->upper_node == b2->upper_node and b1->lower_node == b2->lower_node);
             return false;
         }
     }

@@ -246,10 +246,6 @@ double DAG::output_time(int i, double converted) const {
 
 void DAG::posterior_average(string samples_file, string output_file) {
     ifstream fin(samples_file);
-    if (!fin.good()) {
-        cerr << "Error: samples file not found: " << samples_file << endl;
-        exit(1);
-    }
     int n = nodes.size();
     vector<double> sums(n, 0.0);
     int count = 0;
@@ -265,10 +261,6 @@ void DAG::posterior_average(string samples_file, string output_file) {
         count++;
     }
     fin.close();
-    if (count == 0) {
-        cerr << "Error: samples file is empty." << endl;
-        exit(1);
-    }
     ofstream fout(output_file);
     for (int i = 0; i < n; i++) {
         fout << setprecision(numeric_limits<double>::max_digits10) << sums[i] / count << "\n";
@@ -332,7 +324,6 @@ double DAG::log_acceptance_weight(int i, double t) {
         } else {
             w = 0;
         }
-        assert(!isnan(w));
     }
     for (int k = child_start[i]; k < child_start[i+1]; k++) {
         Branch *b = child_data[k];
@@ -345,7 +336,6 @@ double DAG::log_acceptance_weight(int i, double t) {
         } else {
             w = 0;
         }
-        assert(!isnan(w));
     }
     return w;
 }
@@ -554,7 +544,6 @@ void DAG::load_branches(string branch_file, Mutation_map &mm) {
             un = nodes[int(p)];
         }
         ln = nodes[int(c)];
-        assert(ln->index < un->index or un == root);
         branch_span[{ln, un}] += y - x;
         m = mm.mutation_rate(x, y)*Ne;
         branch_rates[{ln, un}] += m;
@@ -626,14 +615,11 @@ Branch *DAG::search_branch(Node *n1, Node *n2) {
             u = m - 1;
         }
     }
-    cerr << "Error: mutations file refers to branch " << n1->index << " -> "
-         << n2->index << ", which is not in the branches file" << endl;
-    exit(1);
+    return nullptr;
 }
 
 // Draws Exp(1/non_root_lambda) above lb, truncated at ub
 double DAG::random_non_root_time(int i, double t0, double lb, double ub) {
-    assert(ub != INT_MAX);
     double lam = non_root_lambda[i];
     return lb - lam*log1p(-uniform_random()*(1 - exp(-(ub - lb)/lam)));
 }
@@ -645,7 +631,6 @@ double DAG::random_root_time(int i, double lb) {
 
 double DAG::median(std::vector<double>& vec) {
     int size = (int) vec.size();
-    assert(size > 0);
     vector<double> temp(vec);
     nth_element(temp.begin(), temp.begin() + size/2, temp.end());
     return temp[size/2];

@@ -13,10 +13,6 @@ Distribution::Distribution(int n) {
 
 void Distribution::load_distribution(string filename) {
     ifstream fin(filename);
-    if (!fin.good()) {
-        cerr << "input file not found" << endl;
-        exit(1);
-    }
     double x;
     double y;
     double r;
